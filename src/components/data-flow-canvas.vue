@@ -221,63 +221,78 @@
 				this.ctx.lineWidth = 1;
 				this.ctx.beginPath();
 
-				function* drawConnectors(ctx: CanvasRenderingContext2D, side: 'top' | 'bottom') {
-					const connectors = (side == 'top') ? inputs : outputs;
-					const sgn = (side == 'top') ? 1 : -1;
-					const horiz = (side == 'top') ? x : x + width;
-					const vert = (side == 'top') ? y : y + height;
-					if(connectors.length == 0) {
-						return;
-					}
-
-					const midWidth = (connectorWidth + connectorGap) * connectors.length;
-					const edgeWidth = (width - midWidth) / 2;
-					let off = horiz + sgn * edgeWidth;
-					ctx.lineTo(off, vert);
-					for(const connector of connectors) {
-						off += sgn * connectorGap / 2;
-						ctx.lineTo(off, vert);
-						yield {
-							name: connector,
-							side,
-							rect: {
-								x: off,
-								y: vert - (side == 'top' ? connectorWidth / 2 : 0),
-								width: sgn * connectorWidth,
-								height: connectorWidth / 2,
-							}
-						};
-						ctx.arc(off + sgn * connectorWidth / 2, vert, connectorWidth / 2, 0, Math.PI, side == 'top');
-						off += sgn * (connectorWidth + connectorGap / 2);
-						ctx.lineTo(off, vert);
-					}
-				}
-
 				const connectors: {
 					name: string;
-					side: 'top' | 'bottom';
+					type: 'input' | 'output',
 					rect: Rect;
 				}[] = [];
 
 				this.ctx.moveTo(x, y);
 				// Top
-				connectors.push(...drawConnectors(this.ctx, 'top'));
+				if(inputs.length > 0) {
+					const midWidth = (connectorWidth + connectorGap) * inputs.length;
+					const edgeWidth = (width - midWidth) / 2;
+					let off = x + edgeWidth;
+					this.ctx.lineTo(off, y);
+					for(const input of inputs) {
+						off += connectorGap / 2;
+						this.ctx.lineTo(off, y);
+						connectors.push({
+							name: input,
+							type: 'input',
+							rect: {
+								x: off,
+								y: y - connectorWidth / 2,
+								width: connectorWidth,
+								height: connectorWidth, // This intentionally covers the whole circle, not just the arc, to make it easier to click
+							}
+						});
+						this.ctx.arc(off + connectorWidth / 2, y, connectorWidth / 2, Math.PI, 0);
+						off += connectorWidth + connectorGap / 2;
+						this.ctx.lineTo(off, y);
+					}
+				}
 				this.ctx.lineTo(x + width, y);
 				// Right
 				this.ctx.lineTo(x + width, y + height);
 				// Bottom
-				connectors.push(...drawConnectors(this.ctx, 'bottom'));
+				if(outputs.length > 0) {
+					const midWidth = (connectorWidth + connectorGap) * outputs.length;
+					const edgeWidth = (width - midWidth) / 2;
+					let off = x + width - edgeWidth;
+					this.ctx.lineTo(off, y + height);
+					for(const output of outputs) {
+						off -= connectorGap / 2;
+						this.ctx.lineTo(off, y + height);
+						connectors.push({
+							name: output,
+							type: 'output',
+							rect: {
+								x: off - connectorWidth,
+								y: y + height - connectorWidth / 2,
+								width: connectorWidth,
+								height: connectorWidth, // This intentionally covers the whole circle, not just the arc, to make it easier to click
+							}
+						});
+						this.ctx.arc(off - connectorWidth / 2, y + height, connectorWidth / 2, 0, Math.PI);
+						off -= connectorWidth + connectorGap / 2;
+						this.ctx.lineTo(off, y + height);
+					}
+				}
 				this.ctx.lineTo(x, y + height);
 				// Left
 				this.ctx.lineTo(x, y - .5);
 
+				// Draw the task
 				this.ctx.shadowBlur = (task == this.selectedTask) ? 10 : 0;
 				this.ctx.shadowColor = '#000';
 				this.ctx.strokeStyle = '#000';
 				this.ctx.stroke();
 				this.ctx.fillStyle = 'hsl(210, 100%, 80%)';
 				this.ctx.fill();
+				this.ctx.shadowBlur = 0;
 
+				// Check if the mouse is in the task and possibly in a connector
 				const dpr = window.devicePixelRatio || 1;
 				if(this.mouse.loc && this.ctx.isPointInPath(this.mouse.loc.x * dpr, this.mouse.loc.y * dpr)) {
 					this.mouse.task = task;
@@ -288,14 +303,14 @@
 					}
 				}
 
+				// Draw task and connector labels
 				this.ctx.fillStyle = '#000';
-				// this.ctx.fillRect(task.loc.x, task.loc.y + height / 2 - .5, width, 1);
 				const textPad = 3;
 				this.text(task.name, { x: task.loc.x + textPad, y: task.loc.y + textPad, width: width - 2 * textPad, height: height - 2 * textPad }, 24, 'center', 'middle', true);
-				for(const { name, rect: { x, y, width } } of connectors) {
-					this.text(name, { x: x - textPad, y: y + 6, width: width + 2 * textPad, height: 10 }, 10, 'center', 'top');
+				const lblShift = {input: 6, output: -8};
+				for(const { name, type, rect: { x, y, width } } of connectors) {
+					this.text(name, { x: x - textPad, y: y + lblShift[type], width: width + 2 * textPad, height: 10 }, 10, 'center', 'top');
 				}
-				console.log(connectors);
 			},
 
 			mousemove(e: MouseEvent) {
