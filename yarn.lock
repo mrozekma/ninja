@@ -5184,6 +5184,11 @@ pako@~1.0.5:
   resolved "https://registry.yarnpkg.com/pako/-/pako-1.0.10.tgz#4328badb5086a426aa90f541977d4955da5c9732"
   integrity sha512-0DTvPVU3ed8+HNXOu5Bs+o//Mbdj9VNQMUOe9oKCwh8l0GNwpTDMKCWbRjgtD291AWnkAgkqA/LOnQS8AmS1tw==
 
+paper@^0.12.1:
+  version "0.12.1"
+  resolved "https://registry.yarnpkg.com/paper/-/paper-0.12.1.tgz#7625abce4bb39b8d1329fed9f30839b58979d449"
+  integrity sha512-S5u+wzsE4tLq9Yb9bJH/h+F1HVZds0IMuEEvU5cl7qWWXi++3/MN2ouUlvLIfYizmibu8ldshO1ZHSJ7QvI9TA==
+
 parallel-transform@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/parallel-transform/-/parallel-transform-1.1.0.tgz#d410f065b05da23081fcd10f28854c29bda33b06"

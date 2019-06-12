@@ -1,14 +1,18 @@
 <template>
 	<div>
-		App
+		<data-flow-canvas></data-flow-canvas>
 	</div>
 </template>
 
 <script lang="ts">
+
 	import Vue from 'vue';
+	import DataFlowCanvas from './components/data-flow-canvas.vue';
 
 	export default Vue.extend({
-		name: 'app',
+		components: { DataFlowCanvas },
+		mounted() {
+		},
 	});
 </script>
 
