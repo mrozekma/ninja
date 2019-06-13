@@ -10,6 +10,10 @@
 		y: number;
 	}
 
+	function isPoint(pt: any): pt is Point {
+		return pt.x !== undefined && pt.y !== undefined;
+	}
+
 	// Adapted from http://scaledinnovation.com/analytics/splines/splines.html
 	namespace Bezier {
 		function getControlPoints(p0: Point, p1: Point, p2: Point, t: number): [ Point, Point ] {
@@ -80,6 +84,13 @@
 		outputs: string[];
 	}
 
+	interface Connector {
+		task: Task;
+		name: string;
+		type: 'input' | 'output';
+		rect: Rect;
+	}
+
 	const FONT = 'Arial';
 
 	import Vue, { VNode } from 'vue';
@@ -94,13 +105,13 @@
 				},
 				{
 					name: 'Bar',
-					loc: {x: 150, y: 100},
+					loc: {x: 120, y: 250},
 					inputs: ['foo', 'bar', 'baz'],
 					outputs: [],
 				},
 				{
 					name: 'Baz',
-					loc: {x: 270, y: 100},
+					loc: {x: 150, y: 100},
 					inputs: ['foo', 'bar'],
 					outputs: ['baz'],
 				},
@@ -115,15 +126,16 @@
 				mouse: {
 					loc: undefined as Point | undefined, // Current location in the canvas
 					task: undefined as Task | undefined, // Task the mouse is over
-					connector: undefined as string | undefined, // Connector the mouse is over
+					connector: undefined as Connector | undefined, // Connector the mouse is over
 					dragOffset: undefined as Point | undefined, // Offset within the task that the mouse is dragging from
+					connecting: undefined as Connector | undefined, // One endpoint of line being drawn
 				},
 			};
 		},
 		watch: {
 			mouse: {
 				handler(val) {
-					this.canvas.style.cursor = val.connector ? 'pointer' : val.task ? 'move' : 'default';
+					this.canvas.style.cursor = val.connector ? (val.connecting && val.connector.type == val.connecting.type ? 'no-drop' : 'pointer') : val.task ? 'move' : 'default';
 				},
 				deep: true,
 			},
@@ -135,7 +147,7 @@
 			//TODO Update on resize
 
 			//TODO Is there a way to detect these dependencies? It seems like there should be
-			for(const dep of ['tasks', 'selectedTask', 'mouse.loc']) {
+			for(const dep of ['tasks', 'selectedTask', 'mouse.loc', 'mouse.connecting']) {
 				this.$watch(dep, this.draw, { deep: true });
 			}
 			this.draw();
@@ -162,6 +174,11 @@
 
 				for(const task of this.tasks) {
 					this.drawTask(task);
+				}
+				//TODO Store and draw connections
+				if(this.mouse.connecting && this.mouse.loc) {
+					// Draw line between connection source and mouse
+					this.drawConnection(this.mouse.connecting, this.mouse.loc);
 				}
 			},
 
@@ -217,17 +234,12 @@
 			drawTask(task: Task) {
 				const width = 100, height = 75, connectorWidth = 8, connectorGap = 15;
 				const { name, loc: { x, y }, inputs, outputs } = task;
+				const connectors: Connector[] = [];
 
 				this.ctx.lineWidth = 1;
 				this.ctx.beginPath();
-
-				const connectors: {
-					name: string;
-					type: 'input' | 'output',
-					rect: Rect;
-				}[] = [];
-
 				this.ctx.moveTo(x, y);
+
 				// Top
 				if(inputs.length > 0) {
 					const midWidth = (connectorWidth + connectorGap) * inputs.length;
@@ -238,6 +250,7 @@
 						off += connectorGap / 2;
 						this.ctx.lineTo(off, y);
 						connectors.push({
+							task,
 							name: input,
 							type: 'input',
 							rect: {
@@ -253,8 +266,10 @@
 					}
 				}
 				this.ctx.lineTo(x + width, y);
+
 				// Right
 				this.ctx.lineTo(x + width, y + height);
+
 				// Bottom
 				if(outputs.length > 0) {
 					const midWidth = (connectorWidth + connectorGap) * outputs.length;
@@ -265,6 +280,7 @@
 						off -= connectorGap / 2;
 						this.ctx.lineTo(off, y + height);
 						connectors.push({
+							task,
 							name: output,
 							type: 'output',
 							rect: {
@@ -274,12 +290,13 @@
 								height: connectorWidth, // This intentionally covers the whole circle, not just the arc, to make it easier to click
 							}
 						});
-						this.ctx.arc(off - connectorWidth / 2, y + height, connectorWidth / 2, 0, Math.PI);
+						this.ctx.arc(off - connectorWidth / 2, y + height, connectorWidth / 2, 0, Math.PI, true);
 						off -= connectorWidth + connectorGap / 2;
 						this.ctx.lineTo(off, y + height);
 					}
 				}
 				this.ctx.lineTo(x, y + height);
+
 				// Left
 				this.ctx.lineTo(x, y - .5);
 
@@ -294,11 +311,14 @@
 
 				// Check if the mouse is in the task and possibly in a connector
 				const dpr = window.devicePixelRatio || 1;
-				if(this.mouse.loc && this.ctx.isPointInPath(this.mouse.loc.x * dpr, this.mouse.loc.y * dpr)) {
-					this.mouse.task = task;
+				if(this.mouse.loc) {
+					if(this.ctx.isPointInPath(this.mouse.loc.x * dpr, this.mouse.loc.y * dpr)) {
+						this.mouse.task = task;
+					}
 					for(const connector of connectors) {
 						if(pointInRect(this.mouse.loc, connector.rect)) {
-							this.mouse.connector = connector.name;
+							this.mouse.connector = connector;
+							break;
 						}
 					}
 				}
@@ -307,10 +327,48 @@
 				this.ctx.fillStyle = '#000';
 				const textPad = 3;
 				this.text(task.name, { x: task.loc.x + textPad, y: task.loc.y + textPad, width: width - 2 * textPad, height: height - 2 * textPad }, 24, 'center', 'middle', true);
-				const lblShift = {input: 6, output: -8};
-				for(const { name, type, rect: { x, y, width } } of connectors) {
-					this.text(name, { x: x - textPad, y: y + lblShift[type], width: width + 2 * textPad, height: 10 }, 10, 'center', 'top');
+				const lblShift = {input: 6, output: -10};
+				for(const connector of connectors) {
+					this.text(connector.name, {
+						x: connector.rect.x - textPad,
+						y: connector.rect.y + lblShift[connector.type],
+						width: connector.rect.width + 2 * textPad,
+						height: 10
+					}, 10, 'center', 'top');
 				}
+			},
+
+			drawConnection(source: Connector, sink: Connector | Point) {
+				const connectorWidth = 8; //TODO Share with drawTask()
+				const sourcePoint = {
+					x: source.rect.x + source.rect.width / 2,
+					y: source.rect.y + source.rect.height / 2,
+				};
+				const sinkPoint = isPoint(sink) ? sink : {
+					x: sink.rect.x + sink.rect.width / 2,
+					y: sink.rect.y + sink.rect.height / 2,
+				};
+
+				// Source/sink dots
+				for(const point of [sourcePoint, sinkPoint]) {
+					this.ctx.beginPath();
+					this.ctx.moveTo(point.x, point.y);
+					this.ctx.arc(point.x, point.y, connectorWidth / 2 - 1, 0, 2 * Math.PI);
+					this.ctx.strokeStyle = 'hsl(210, 100%, 20%)'
+					this.ctx.stroke();
+					this.ctx.fillStyle = 'hsl(210, 100%, 50%)';
+					this.ctx.fill();
+				}
+
+				// Line between them
+				this.ctx.beginPath();
+				this.ctx.moveTo(sourcePoint.x, sourcePoint.y + (connectorWidth / 2 - 1) * (source.type == 'input' ? -1 : 1));
+				this.ctx.bezierCurveTo(
+					sourcePoint.x, sourcePoint.y + (source.type == 'input' ? -50 : 50),
+					sinkPoint.x, sinkPoint.y + (source.type == 'input' ? 50 : -50),
+					sinkPoint.x, sinkPoint.y,
+				);
+				this.ctx.stroke();
 			},
 
 			mousemove(e: MouseEvent) {
@@ -328,16 +386,17 @@
 				}
 			},
 			mouseleave() {
-				this.mouse = {
-					loc: undefined,
-					task: undefined,
-					connector: undefined,
-					dragOffset: undefined,
-				};
+				for(const k of Object.keys(this.mouse)) {
+					//@ts-ignore Typescript can't deduce that this.mouse[k] exists, but it obviously does
+					this.mouse[k] = undefined;
+				}
 			},
 			mousedown(e: MouseEvent) {
-				if(this.mouse.connector) {
-					//TODO
+				if(this.mouse.connecting) {
+					//TODO Make connection if possible
+					this.mouse.connecting = undefined;
+				} else if(this.mouse.connector) {
+					this.mouse.connecting = this.mouse.connector;
 				} else if(this.mouse.task) {
 					this.selectedTask = this.mouse.task;
 					this.mouse.dragOffset = {
