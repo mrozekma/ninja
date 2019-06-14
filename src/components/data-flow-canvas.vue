@@ -5,68 +5,7 @@
 </template>
 
 <script lang="ts">
-	interface Point {
-		x: number;
-		y: number;
-	}
-
-	function isPoint(pt: any): pt is Point {
-		return pt.x !== undefined && pt.y !== undefined;
-	}
-
-	// Adapted from http://scaledinnovation.com/analytics/splines/splines.html
-	namespace Bezier {
-		function getControlPoints(p0: Point, p1: Point, p2: Point, t: number): [ Point, Point ] {
-			//  Scaling factors: distances from this knot to the previous and following knots.
-			const d01 = Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));
-			const d12 = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-
-			const fa = t * d01 / (d01 + d12);
-			const fb = t - fa;
-
-			return [{
-				x: p1.x + fa * (p0.x - p2.x),
-				y: p1.y + fa * (p0.y - p2.y),
-			}, {
-				x: p1.x - fb * (p0.x - p2.x),
-				y: p1.y - fb * (p0.y - p2.y),
-			}];
-		}
-
-		export function drawSpline(ctx: CanvasRenderingContext2D, pts: Point[], t: number) {
-			ctx.save();
-			ctx.lineWidth = 4;
-
-			// First arc
-			let [cp0, cp1] = getControlPoints(pts[0], pts[1], pts[2], .3);
-			ctx.beginPath();
-			ctx.moveTo(pts[0].x, pts[0].y);
-			ctx.quadraticCurveTo(cp0.x, cp0.y, pts[1].x, pts[1].y);
-			ctx.stroke();
-			ctx.closePath();
-
-			// Every middle arc
-			for(let i = 2; i < pts.length - 1; i++) {
-				let cp2;
-				cp0 = cp1;
-				[cp1, cp2] = getControlPoints(pts[i-1], pts[i], pts[i+1], .3);
-				ctx.beginPath();
-				ctx.moveTo(pts[i-1].x, pts[i-1].y);
-				ctx.bezierCurveTo(cp0.x, cp0.y, cp1.x, cp1.y, pts[i].x, pts[i].y);
-				ctx.stroke();
-				ctx.closePath();
-				cp1 = cp2;
-			}
-
-			// Last arc
-			ctx.beginPath();
-			ctx.moveTo(pts[pts.length-2].x, pts[pts.length-2].y);
-			ctx.quadraticCurveTo(cp1.x, cp1.y, pts[pts.length-1].x, pts[pts.length-1].y);
-			ctx.stroke();
-			ctx.closePath();
-			ctx.restore();
-		}
-	}
+	import { Point, Task, isPoint } from '../types';
 
 	interface Rect extends Point {
 		width: number;
@@ -75,13 +14,6 @@
 
 	function pointInRect(pt: Point, rect: Rect) {
 		return pt.x >= rect.x && pt.y >= rect.y && pt.x < rect.x + rect.width && pt.y < rect.y + rect.height;
-	}
-
-	interface Task {
-		name: string;
-		loc: Point;
-		inputs: string[];
-		outputs: string[];
 	}
 
 	interface Connector {
@@ -93,35 +25,26 @@
 
 	const FONT = 'Arial';
 
-	import Vue, { VNode } from 'vue';
+	import Vue, { PropType } from 'vue';
 	export default Vue.extend({
+		computed: {
+			tasks(): Task[] {
+				//@ts-ignore
+				return this.$root.tasks;
+			},
+			// drawData() {
+			// 	interface DrawData {
+			// 		task: Task;
+			// 		rect: Rect;
+			// 	}
+			// },
+		},
 		data() {
-			const tasks: Task[] = [
-				{
-					name: 'Foo',
-					loc: {x: 30, y: 100},
-					inputs: [],
-					outputs: [],
-				},
-				{
-					name: 'Bar',
-					loc: {x: 120, y: 250},
-					inputs: ['foo', 'bar', 'baz'],
-					outputs: [],
-				},
-				{
-					name: 'Baz',
-					loc: {x: 150, y: 100},
-					inputs: ['foo', 'bar'],
-					outputs: ['baz'],
-				},
-			];
 			return {
 				// canvas and ctx get set in mounted(), so I'm pretending that they're never undefined because after a certain point that's true
 				canvas: undefined as unknown as HTMLCanvasElement,
 				ctx: undefined as unknown as CanvasRenderingContext2D,
 
-				tasks,
 				selectedTask: undefined as Task | undefined,
 				mouse: {
 					loc: undefined as Point | undefined, // Current location in the canvas
@@ -135,7 +58,7 @@
 		watch: {
 			mouse: {
 				handler(val) {
-					this.canvas.style.cursor = val.connector ? (val.connecting && val.connector.type == val.connecting.type ? 'no-drop' : 'pointer') : val.task ? 'move' : 'default';
+					this.canvas.style.cursor = val.connector ? (val.connecting && (val.connector.type == val.connecting.type || val.connector.task == val.connecting.task) ? 'no-drop' : 'pointer') : val.task ? 'move' : 'default';
 				},
 				deep: true,
 			},
@@ -172,12 +95,33 @@
 				this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 				this.ctx.restore();
 
-				for(const task of this.tasks) {
-					this.drawTask(task);
+				//TODO This is a horrible hack
+				//NB: The keys here are "task_name.connector_name"
+				const allConnectors: { [K: string]: Connector } = {};
+				function getConnector(task: Task, name: string) {
+					const rtn = allConnectors[`${task.name}.${name}`];
+					if(rtn === undefined) {
+						throw new Error(`Couldn't find connector ${name} on task ${task.name}`);
+					}
+					return rtn;
 				}
-				//TODO Store and draw connections
+
+				// Draw tasks
+				for(const task of this.tasks) {
+					this.drawTask(task, allConnectors);
+				}
+				// Draw line between task connectors
+				for(const task of this.tasks) {
+					for(const input of task.inputs) {
+						if(input.connectedTo) {
+							const inputCon = getConnector(task, input.name);
+							const outputCon = getConnector(input.connectedTo.task, input.connectedTo.outputName);
+							this.drawConnection(inputCon, outputCon);
+						}
+					}
+				}
+				// Draw line between task connector and mouse
 				if(this.mouse.connecting && this.mouse.loc) {
-					// Draw line between connection source and mouse
 					this.drawConnection(this.mouse.connecting, this.mouse.loc);
 				}
 			},
@@ -231,7 +175,7 @@
 				// this.ctx.strokeRect(x, y, width, -height);
 			},
 
-			drawTask(task: Task) {
+			drawTask(task: Task, allConnectors?: { [K: string]: Connector }) {
 				const width = 100, height = 75, connectorWidth = 8, connectorGap = 15;
 				const { name, loc: { x, y }, inputs, outputs } = task;
 				const connectors: Connector[] = [];
@@ -251,7 +195,7 @@
 						this.ctx.lineTo(off, y);
 						connectors.push({
 							task,
-							name: input,
+							name: input.name,
 							type: 'input',
 							rect: {
 								x: off,
@@ -260,7 +204,7 @@
 								height: connectorWidth, // This intentionally covers the whole circle, not just the arc, to make it easier to click
 							}
 						});
-						this.ctx.arc(off + connectorWidth / 2, y, connectorWidth / 2, Math.PI, 0);
+						this.ctx.arc(off + connectorWidth / 2, y, connectorWidth / 2, Math.PI, 0, true);
 						off += connectorWidth + connectorGap / 2;
 						this.ctx.lineTo(off, y);
 					}
@@ -281,7 +225,7 @@
 						this.ctx.lineTo(off, y + height);
 						connectors.push({
 							task,
-							name: output,
+							name: output.name,
 							type: 'output',
 							rect: {
 								x: off - connectorWidth,
@@ -290,7 +234,7 @@
 								height: connectorWidth, // This intentionally covers the whole circle, not just the arc, to make it easier to click
 							}
 						});
-						this.ctx.arc(off - connectorWidth / 2, y + height, connectorWidth / 2, 0, Math.PI, true);
+						this.ctx.arc(off - connectorWidth / 2, y + height, connectorWidth / 2, 0, Math.PI);
 						off -= connectorWidth + connectorGap / 2;
 						this.ctx.lineTo(off, y + height);
 					}
@@ -323,11 +267,20 @@
 					}
 				}
 
+				// Space within the main rectangle that avoids the edges and the connector labels
+				const innerTextRect: Rect = {
+					x: task.loc.x + 3,
+					width: width - 6,
+					y: task.loc.y + 14,
+					height: height - 26,
+				};
+				// this.ctx.strokeRect(innerTextRect.x, innerTextRect.y, innerTextRect.width, innerTextRect.height);
+
 				// Draw task and connector labels
 				this.ctx.fillStyle = '#000';
 				const textPad = 3;
-				this.text(task.name, { x: task.loc.x + textPad, y: task.loc.y + textPad, width: width - 2 * textPad, height: height - 2 * textPad }, 24, 'center', 'middle', true);
-				const lblShift = {input: 6, output: -10};
+				this.text(task.name, innerTextRect, 24, 'center', 'middle', true);
+				const lblShift = {input: 8, output: -8};
 				for(const connector of connectors) {
 					this.text(connector.name, {
 						x: connector.rect.x - textPad,
@@ -335,6 +288,12 @@
 						width: connector.rect.width + 2 * textPad,
 						height: 10
 					}, 10, 'center', 'top');
+				}
+
+				if(allConnectors !== undefined) {
+					for(const connector of connectors) {
+						allConnectors[`${task.name}.${connector.name}`] = connector;
+					}
 				}
 			},
 
@@ -361,6 +320,7 @@
 				}
 
 				// Line between them
+				//TODO Bend differently if the output task is below the input task
 				this.ctx.beginPath();
 				this.ctx.moveTo(sourcePoint.x, sourcePoint.y + (connectorWidth / 2 - 1) * (source.type == 'input' ? -1 : 1));
 				this.ctx.bezierCurveTo(
@@ -391,11 +351,44 @@
 					this.mouse[k] = undefined;
 				}
 			},
+			connect(inputCon: Connector, outputCon: Connector) {
+				const input = inputCon.task.inputs.find(inp => inp.name == inputCon.name)!;
+				input.connectedTo = {
+					task: outputCon.task,
+					outputName: outputCon.name,
+				};
+			},
+			disconnect(inputCon: Connector) {
+				const input = inputCon.task.inputs.find(inp => inp.name == inputCon.name)!;
+				if(input.connectedTo === undefined) {
+					return false;
+				} else {
+					input.connectedTo = undefined;
+					return true;
+				}
+			},
 			mousedown(e: MouseEvent) {
+				//TODO Handle dragging a connection instead of clicking the source/sink separately
+				//TODO Disconnections
 				if(this.mouse.connecting) {
-					//TODO Make connection if possible
+					if(this.mouse.connector && this.mouse.connecting.task != this.mouse.connector.task) {
+						if(this.mouse.connecting.type == 'input' && this.mouse.connector.type == 'output') {
+							this.connect(this.mouse.connecting, this.mouse.connector);
+						} else if(this.mouse.connector.type == 'input' && this.mouse.connecting.type == 'output') {
+							this.connect(this.mouse.connector, this.mouse.connecting);
+						}
+						const task = this.mouse.connector.task;
+
+					}
 					this.mouse.connecting = undefined;
 				} else if(this.mouse.connector) {
+					if(this.mouse.connector.type == 'input' && this.disconnect(this.mouse.connector)) {
+						// Clicked an existing input and disconnected it
+						//TODO Fix the reactivity; currently connectors aren't part of the component state
+						this.draw();
+						return;
+					}
+					// Clicked an output or an empty input; make a new connection
 					this.mouse.connecting = this.mouse.connector;
 				} else if(this.mouse.task) {
 					this.selectedTask = this.mouse.task;

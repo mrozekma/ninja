@@ -5,14 +5,11 @@
 </template>
 
 <script lang="ts">
-
 	import Vue from 'vue';
 	import DataFlowCanvas from './components/data-flow-canvas.vue';
 
 	export default Vue.extend({
 		components: { DataFlowCanvas },
-		mounted() {
-		},
 	});
 </script>
 
