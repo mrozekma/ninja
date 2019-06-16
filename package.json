@@ -1,5 +1,5 @@
 {
-	"name": "bin2d",
+	"name": "ninja",
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
@@ -7,8 +7,12 @@
 		"build": "vue-cli-service build"
 	},
 	"dependencies": {
+		"@fortawesome/fontawesome-free": "^5.9.0",
+		"buefy": "^0.7.7",
 		"core-js": "^2.6.5",
 		"paper": "^0.12.1",
+		"split-grid": "^1.0.9",
+		"typeface-montserrat": "^0.0.54",
 		"vue": "^2.6.10"
 	},
 	"devDependencies": {

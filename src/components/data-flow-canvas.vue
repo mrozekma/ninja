@@ -5,6 +5,7 @@
 </template>
 
 <script lang="ts">
+	//TODO Autolayout: https://github.com/dagrejs/dagre/wiki https://www.npmjs.com/package/elkjs
 	import { Point, Task, isPoint } from '../types';
 
 	interface Rect extends Point {
@@ -67,7 +68,12 @@
 			this.canvas = this.$refs.canvas as HTMLCanvasElement;
 			this.ctx = this.canvas.getContext('2d')!;
 			this.setupCanvas();
-			//TODO Update on resize
+
+			window.addEventListener('resize', () => {
+				console.log('resize');
+				this.setupCanvas();
+				this.draw()
+			});
 
 			//TODO Is there a way to detect these dependencies? It seems like there should be
 			for(const dep of ['tasks', 'selectedTask', 'mouse.loc', 'mouse.connecting']) {
@@ -77,6 +83,7 @@
 		},
 		methods: {
 			setupCanvas() {
+				//TODO Panning/zooming
 				const dpr = window.devicePixelRatio || 1;
 				const rect = this.canvas.getBoundingClientRect();
 				this.canvas.width = rect.width * dpr;
@@ -308,7 +315,18 @@
 					y: sink.rect.y + sink.rect.height / 2,
 				};
 
-				// Source/sink dots
+				// Line between the connectors
+				//TODO Bend differently if the output task is below the input task
+				this.ctx.beginPath();
+				this.ctx.moveTo(sourcePoint.x, sourcePoint.y);
+				this.ctx.bezierCurveTo(
+					sourcePoint.x, sourcePoint.y + (source.type == 'input' ? -50 : 50),
+					sinkPoint.x, sinkPoint.y + (source.type == 'input' ? 50 : -50),
+					sinkPoint.x, sinkPoint.y,
+				);
+				this.ctx.stroke();
+
+				// Connector circles (these are drawn after the line so the fill is on top)
 				for(const point of [sourcePoint, sinkPoint]) {
 					this.ctx.beginPath();
 					this.ctx.moveTo(point.x, point.y);
@@ -318,17 +336,6 @@
 					this.ctx.fillStyle = 'hsl(210, 100%, 50%)';
 					this.ctx.fill();
 				}
-
-				// Line between them
-				//TODO Bend differently if the output task is below the input task
-				this.ctx.beginPath();
-				this.ctx.moveTo(sourcePoint.x, sourcePoint.y + (connectorWidth / 2 - 1) * (source.type == 'input' ? -1 : 1));
-				this.ctx.bezierCurveTo(
-					sourcePoint.x, sourcePoint.y + (source.type == 'input' ? -50 : 50),
-					sinkPoint.x, sinkPoint.y + (source.type == 'input' ? 50 : -50),
-					sinkPoint.x, sinkPoint.y,
-				);
-				this.ctx.stroke();
 			},
 
 			mousemove(e: MouseEvent) {
@@ -412,5 +419,7 @@
 <style lang="less" scoped>
 	canvas {
 		border: 1px solid #f00;
+		// Buefy changes all box-sizing to border-box, which for some unknown reason makes the canvas blurry
+		box-sizing: content-box;
 	}
 </style>
