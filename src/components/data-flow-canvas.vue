@@ -1,5 +1,5 @@
 <template>
-	<canvas ref="canvas" width=600 height=600 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown="mousedown" @mouseup="mouseup">
+	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown="mousedown" @mouseup="mouseup">
 		{{ canvas }}
 	</canvas>
 </template>
@@ -7,7 +7,7 @@
 <script lang="ts">
 	//TODO Autolayout: https://github.com/dagrejs/dagre/wiki https://www.npmjs.com/package/elkjs
 	import { Point, isPoint, RootData } from '@/types';
-	import { ToolInst, Input, Output } from '@/tools'
+	import { ToolInst, Input, Output, updateData } from '@/tools'
 
 	interface Rect extends Point {
 		width: number;
@@ -377,6 +377,7 @@
 					output: outputCon.field,
 					upToDate: false,
 				};
+				updateData(this.rootData.tools, inputCon.field);
 			},
 			disconnect(inputCon: Connector) {
 				if(inputCon.type != 'input') {
@@ -386,6 +387,7 @@
 					return false;
 				} else {
 					inputCon.field.connection = undefined;
+					updateData(this.rootData.tools, inputCon.field);
 					return true;
 				}
 			},

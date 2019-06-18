@@ -24,6 +24,7 @@ export interface RemoteConnection {
 
 export type Output = {
 	name: string;
+	description: string;
 	tool: ToolInst;
 } & ({
 	type: 'string' | 'text';
@@ -90,7 +91,7 @@ export abstract class ToolInst {
 	abstract get outputs(): Output[];
 
 	// Called when the user is manually setting a input's value
-	setInput(inputName: string, val: string | boolean | number) {
+	setInput(inputName: string, val: string | boolean | number): Input {
 		const input = this.inputs.find(input => input.name == inputName);
 		if(!input) {
 			throw new Error(`Tool ${this.name} has no input '${inputName}'`);
@@ -108,5 +109,12 @@ export abstract class ToolInst {
 
 		console.log(`${this.name}.${input.name} = ${val}`);
 		input.val = val;
+		return input;
 	}
+}
+
+//TODO It would be nice for this to get called automatically instead of by every spot that updates an input. Investigate RxJS or similar libraries
+export function updateData(tools: ToolInst[], change?: Input) {
+	//TODO
+	console.log(`Update data triggered by change to ${change!.tool.name}.${change!.name}`);
 }

@@ -2,10 +2,10 @@
 	<!-- TODO Scroll -->
 	<div class="form">
 		<div class="type-and-name">
-			<b-field v-if="rootData.selectedTool" label="name">
+			<b-field v-if="rootData.selectedTool" label="Name">
 				<b-input :value="rootData.selectedTool.name" @input="setName($event)"></b-input>
 			</b-field>
-			<b-field v-if="rootData.selectedTool" label="type">
+			<b-field v-if="rootData.selectedTool" label="Type">
 				<b-input :value="rootData.selectedTool.def.name" disabled></b-input>
 			</b-field>
 		</div>
@@ -60,6 +60,19 @@
 			grid-template-columns: 1fr 1fr;
 			gap: 10px;
 			margin: 10px 10px 0 10px;
+		}
+
+		@stripe: #eee;
+		@stripeSize: 40px;
+
+		/deep/ .is-loading:not(.field) {
+			background: linear-gradient(-45deg, @stripe 25%, transparent 25%, transparent 50%, @stripe 50%, @stripe 75%, transparent 75%, transparent) top/@stripeSize @stripeSize #fff;
+			animation: stripe-animation 1s linear infinite;
+		}
+
+		@keyframes stripe-animation {
+			from { background-position: @stripeSize 0; }
+			to { background-position: 0 0; }
 		}
 	}
 </style>
