@@ -22,6 +22,7 @@
 					<div class="gutter-v" ref="gutter3"></div>
 					<div class="col">
 						<h1>Outputs</h1>
+						<output-view></output-view>
 					</div>
 				</div>
 			</div>
@@ -52,8 +53,9 @@
 	import ToolList from './components/tool-list.vue';
 	import PropertyView from './components/property-view.vue';
 	import DataFlowCanvas from './components/data-flow-canvas.vue';
+	import OutputView from './tools/output-view.vue';
 	export default Vue.extend({
-		components: { ToolList, PropertyView, DataFlowCanvas },
+		components: { ToolList, PropertyView, DataFlowCanvas, OutputView },
 		mounted() {
 			Split({
 				columnGutters: [{
@@ -147,12 +149,7 @@ $colors: (
 		cursor: row-resize;
 	}
 
-	.field /deep/ label {
+	.field label {
 		color: #fff;
-	}
-
-	button .icon i.far {
-		// Buefy is using 400 for .far, but I don't have the premium Font Awesome installed, so switch to 900 for the free .fas version
-		// font-weight: 900;
 	}
 </style>

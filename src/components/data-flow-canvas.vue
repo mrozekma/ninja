@@ -6,7 +6,7 @@
 
 <script lang="ts">
 	//TODO Autolayout: https://github.com/dagrejs/dagre/wiki https://www.npmjs.com/package/elkjs
-	import { Point, ToolInst, isPoint, RootData } from '@/types';
+	import { Point, ToolInst, isPoint, RootData, Input, Output } from '@/types';
 
 	interface Rect extends Point {
 		width: number;
@@ -17,12 +17,23 @@
 		return pt.x >= rect.x && pt.y >= rect.y && pt.x < rect.x + rect.width && pt.y < rect.y + rect.height;
 	}
 
-	interface Connector {
-		tool: ToolInst;
-		name: string;
-		type: 'input' | 'output';
+	//TODO Split types?
+	type Connector = {
+		type: 'input';
+		field: Input;
+		rect: Rect;
+	} | {
+		type: 'output';
+		field: Output;
 		rect: Rect;
 	}
+
+	// interface Connector {
+	// 	tool: ToolInst;
+	// 	name: string;
+	// 	type: 'input' | 'output';
+	// 	rect: Rect;
+	// }
 
 	const FONT = 'Arial';
 
@@ -52,7 +63,8 @@
 		watch: {
 			mouse: {
 				handler(val) {
-					this.canvas.style.cursor = val.connector ? (val.connecting && (val.connector.type == val.connecting.type || val.connector.tool == val.connecting.tool) ? 'no-drop' : 'pointer') : val.tool ? 'move' : 'default';
+					const connector: Connector | undefined = val.connector, connecting: Connector | undefined = val.connecting;
+					this.canvas.style.cursor = connector ? (connecting && (connector.type == connecting.type || connector.field.tool == connecting.field.tool) ? 'no-drop' : 'pointer') : val.tool ? 'move' : 'default';
 				},
 				deep: true,
 			},
@@ -63,9 +75,8 @@
 			this.setupCanvas();
 
 			window.addEventListener('resize', () => {
-				console.log('resize');
 				this.setupCanvas();
-				this.draw()
+				this.draw();
 			});
 
 			//TODO Is there a way to detect these dependencies? It seems like there should be
@@ -107,9 +118,9 @@
 				}
 
 				let tools = this.rootData.tools;
-				if(this.rootData.selectedTool && this.rootData.selectedTool.ephemeral) {
-					tools = [...tools, this.rootData.selectedTool];
-				}
+				// if(this.rootData.selectedTool && this.rootData.selectedTool.ephemeral) {
+				// 	tools = [...tools, this.rootData.selectedTool];
+				// }
 
 				// Draw tools
 				for(const tool of tools) {
@@ -118,9 +129,9 @@
 				// Draw line between tool connectors
 				for(const tool of tools) {
 					for(const input of tool.inputs) {
-						if(input.connectedTo) {
+						if(input.connection) {
 							const inputCon = getConnector(tool, input.name);
-							const outputCon = getConnector(input.connectedTo.tool, input.connectedTo.outputName);
+							const outputCon = getConnector(input.connection.output.tool, input.connection.output.name);
 							this.drawConnection(inputCon, outputCon);
 						}
 					}
@@ -199,9 +210,8 @@
 						off += connectorGap / 2;
 						this.ctx.lineTo(off, y);
 						connectors.push({
-							tool,
-							name: input.name,
 							type: 'input',
+							field: input,
 							rect: {
 								x: off,
 								y: y - connectorWidth / 2,
@@ -229,9 +239,8 @@
 						off -= connectorGap / 2;
 						this.ctx.lineTo(off, y + height);
 						connectors.push({
-							tool,
-							name: output.name,
 							type: 'output',
+							field: output,
 							rect: {
 								x: off - connectorWidth,
 								y: y + height - connectorWidth / 2,
@@ -254,16 +263,16 @@
 				this.ctx.shadowColor = '#fff';
 				this.ctx.strokeStyle = '#fff';
 				this.ctx.stroke();
-				if(tool.ephemeral) {
-					const grad = this.ctx.createLinearGradient(x, y, x + width, y + height);
-					for(let i = 0; i + .05 <= 1; i += .1) {
-						grad.addColorStop(i, 'hsl(348, 100%, 61%)');
-						grad.addColorStop(i + .05, 'hsl(348, 100%, 70%)');
-					}
-					this.ctx.fillStyle = grad;
-				} else {
+				// if(tool.ephemeral) {
+				// 	const grad = this.ctx.createLinearGradient(x, y, x + width, y + height);
+				// 	for(let i = 0; i + .05 <= 1; i += .1) {
+				// 		grad.addColorStop(i, 'hsl(348, 100%, 61%)');
+				// 		grad.addColorStop(i + .05, 'hsl(348, 100%, 70%)');
+				// 	}
+				// 	this.ctx.fillStyle = grad;
+				// } else {
 					this.ctx.fillStyle = 'hsl(348, 100%, 61%)';
-				}
+				// }
 				this.ctx.fill();
 				this.ctx.shadowBlur = 0;
 
@@ -296,7 +305,7 @@
 				this.text(tool.name, innerTextRect, 24, 'center', 'middle', true);
 				const lblShift = {input: 9, output: -9};
 				for(const connector of connectors) {
-					this.text(connector.name, {
+					this.text(connector.field.name, {
 						x: connector.rect.x - textPad,
 						y: connector.rect.y + lblShift[connector.type],
 						width: connector.rect.width + 2 * textPad,
@@ -306,7 +315,7 @@
 
 				if(allConnectors !== undefined) {
 					for(const connector of connectors) {
-						allConnectors[`${tool.name}.${connector.name}`] = connector;
+						allConnectors[`${tool.name}.${connector.field.name}`] = connector;
 					}
 				}
 			},
@@ -367,33 +376,35 @@
 				}
 			},
 			connect(inputCon: Connector, outputCon: Connector) {
-				const input = inputCon.tool.inputs.find(inp => inp.name == inputCon.name)!;
-				input.connectedTo = {
-					tool: outputCon.tool,
-					outputName: outputCon.name,
+				if(inputCon.type != 'input' || outputCon.type != 'output') {
+					throw new Error("Bad connector types");
+				}
+				inputCon.field.connection = {
+					output: outputCon.field,
+					upToDate: false,
 				};
 			},
 			disconnect(inputCon: Connector) {
-				const input = inputCon.tool.inputs.find(inp => inp.name == inputCon.name)!;
-				if(input.connectedTo === undefined) {
+				if(inputCon.type != 'input') {
+					throw new Error("Bad connector type");
+				}
+				if(inputCon.field.connection === undefined) {
 					return false;
 				} else {
-					input.connectedTo = undefined;
+					inputCon.field.connection = undefined;
 					return true;
 				}
 			},
 			mousedown(e: MouseEvent) {
 				//TODO Handle dragging a connection instead of clicking the source/sink separately
-				//TODO Disconnections
 				if(this.mouse.connecting) {
-					if(this.mouse.connector && this.mouse.connecting.tool != this.mouse.connector.tool) {
+					if(this.mouse.connector && this.mouse.connecting.field.tool != this.mouse.connector.field.tool) {
 						if(this.mouse.connecting.type == 'input' && this.mouse.connector.type == 'output') {
 							this.connect(this.mouse.connecting, this.mouse.connector);
 						} else if(this.mouse.connector.type == 'input' && this.mouse.connecting.type == 'output') {
 							this.connect(this.mouse.connector, this.mouse.connecting);
 						}
-						const tool = this.mouse.connector.tool;
-
+						// const tool = this.mouse.connector.field.tool;
 					}
 					this.mouse.connecting = undefined;
 				} else if(this.mouse.connector) {

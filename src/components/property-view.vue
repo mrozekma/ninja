@@ -1,14 +1,20 @@
 <template>
 	<!-- TODO Scroll -->
 	<div class="form">
-		<b-field v-if="rootData.selectedTool" label="name">
-			<b-input :value="rootData.selectedTool.name" @input="setName($event)"></b-input>
-		</b-field>
+		<div class="type-and-name">
+			<b-field v-if="rootData.selectedTool" label="name">
+				<b-input :value="rootData.selectedTool.name" @input="setName($event)"></b-input>
+			</b-field>
+			<b-field v-if="rootData.selectedTool" label="type">
+				<b-input :value="rootData.selectedTool.def.name" disabled></b-input>
+			</b-field>
+		</div>
 		<component v-if="editorComponent" :is="editorComponent"></component>
 	</div>
 </template>
 
 <script lang="ts">
+	//TODO Tool deletion
 	import { ToolInst, RootData } from '@/types';
 	import groups from '@/tools/groups';
 
@@ -39,6 +45,7 @@
 		},
 		methods: {
 			setName(name: string) {
+				//TODO Handle name collisions
 				this.rootData.selectedTool!.name = name;
 			}
 		},
@@ -46,7 +53,12 @@
 </script>
 
 <style lang="less" scoped>
-	.form > .field {
-		margin: 10px;
+	.form {
+		.type-and-name {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 10px;
+			margin: 10px 10px 0 10px;
+		}
 	}
 </style>

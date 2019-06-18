@@ -72,8 +72,6 @@ export interface RootData {
 }
 
 export interface RemoteConnection {
-	tool: ToolInst;
-	outputName: string;
 	output: Output;
 	upToDate: boolean;
 }
@@ -128,19 +126,19 @@ function convertToNumber(val: string | boolean | number): number | Error {
 }
 
 export abstract class ToolInst {
-	private _name: string = '';
+	private _name: string;
+	private _loc: Point;
 
 	constructor(public readonly def: ToolDef, name: string) {
-		this.name = name;
-	}
-
-	get name(): string {
-		return this._name;
-	}
-
-	set name(name: string) {
 		this._name = name;
+		this._loc = {x: 0, y: 0};
 	}
+
+	get name(): string { return this._name; }
+	set name(name: string) { this._name = name; }
+
+	get loc(): Point { return this._loc; }
+	set loc(loc: Point) { this._loc = loc; }
 
 	abstract get inputs(): Input[];
 	abstract get outputs(): Output[];
@@ -151,7 +149,7 @@ export abstract class ToolInst {
 		if(!input) {
 			throw new Error(`Tool ${this.name} has no input '${inputName}'`);
 		} else if(input.connection !== undefined) {
-			throw new Error(`Input ${this.name}.${inputName} is bound to ${input.connection.tool.name}.${input.connection.outputName}`);
+			throw new Error(`Input ${this.name}.${inputName} is bound to ${input.connection.output.tool.name}.${input.connection.output.name}`);
 		}
 
 		const expectedType = (input.type === 'text' || input.type === 'enum') ? 'string' : input.type;
