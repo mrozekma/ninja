@@ -44,7 +44,20 @@
 		},
 		methods: {
 			selectTool(def: ToolDef) {
-				this.rootData.selectedTool = def.gen();
+				// Find a free name based on the tool name
+				const names = new Set(this.rootData.tools.map(tool => tool.name));
+				const name: string = (() => {
+					if(!names.has(def.name)) {
+						return def.name;
+					}
+					for(let i = 2; ; i++) {
+						const name = def.name + i;
+						if(!names.has(name)) {
+							return name;
+						}
+					}
+				})();
+				this.rootData.selectedTool = def.gen(name);
 			},
 		},
 	});

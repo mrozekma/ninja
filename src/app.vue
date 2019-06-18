@@ -1,6 +1,6 @@
 <template>
 	<div class="app">
-		<nav class="navbar is-danger">
+		<nav class="navbar is-primary">
 			<div class="navbar-brand">
 				<div class="navbar-item">
 					<i class="fas fa-user-ninja"></i> Ninja
@@ -38,9 +38,9 @@
 	import Vue from 'vue';
 
 	import Buefy from 'buefy';
-	import 'buefy/dist/buefy.css';
+	// import 'buefy/dist/buefy.css';
 	Vue.use(Buefy, {
-		defaultIconPack: 'far',
+		defaultIconPack: 'fas',
 	});
 	import 'typeface-montserrat';
 	import '@fortawesome/fontawesome-free';
@@ -71,6 +71,27 @@
 		},
 	});
 </script>
+
+<style lang="scss">
+@import "~bulma/sass/utilities/_all";
+
+$primary: $danger;
+$primary-invert: findColorInvert($primary);
+$colors: (
+	"white": ($white, $black),
+	"black": ($black, $white),
+	"light": ($light, $light-invert),
+	"dark": ($dark, $dark-invert),
+	"primary": ($primary, $primary-invert),
+	"info": ($info, $info-invert),
+	"success": ($success, $success-invert),
+	"warning": ($warning, $warning-invert),
+	"danger": ($danger, $danger-invert),
+);
+
+@import "~bulma";
+@import "~buefy/src/scss/buefy";
+</style>
 
 <style lang="less">
 	body {
@@ -124,5 +145,14 @@
 
 	.gutter-v {
 		cursor: row-resize;
+	}
+
+	.field /deep/ label {
+		color: #fff;
+	}
+
+	button .icon i.far {
+		// Buefy is using 400 for .far, but I don't have the premium Font Awesome installed, so switch to 900 for the free .fas version
+		// font-weight: 900;
 	}
 </style>
