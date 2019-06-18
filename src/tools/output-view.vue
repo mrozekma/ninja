@@ -14,7 +14,8 @@
 
 <script lang="ts">
 	//TODO Global outputs when no tool selected
-	import { RootData, Output } from '../types';
+	import { RootData } from '@/types';
+	import { Output } from '@/tools';
 
 	import Vue from 'vue';
 	export default Vue.extend({

@@ -18,7 +18,8 @@
 	//TODO Search
 	//TODO Expand/collapse animation
 	import toolGroups from '@/tools/groups';
-	import { ToolGroup, ToolDef, RootData } from '@/types';
+	import { ToolGroup, RootData } from '@/types';
+	import { ToolDef } from '@/tools';
 
 	interface ToolGroupGUI extends ToolGroup {
 		expanded: boolean;

@@ -13,7 +13,8 @@
 </template>
 
 <script lang="ts">
-	import { RootData, Input } from '../types';
+	import { RootData } from '@/types';
+	import { Input } from '@/tools';
 
 	import Vue from 'vue';
 	export default Vue.extend({

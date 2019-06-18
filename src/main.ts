@@ -1,4 +1,5 @@
-import { ToolInst, RootData } from './types';
+import { RootData } from '@/types';
+import { ToolInst } from '@/tools'
 import Vue from 'vue';
 import App from './app.vue';
 

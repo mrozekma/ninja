@@ -15,7 +15,8 @@
 
 <script lang="ts">
 	//TODO Tool deletion
-	import { ToolInst, RootData } from '@/types';
+	import { RootData } from '@/types';
+	import { ToolInst } from '@/tools';
 	import groups from '@/tools/groups';
 
 	const editors: {[K: string]: (() => Promise<any>)} = {

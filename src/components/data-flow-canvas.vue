@@ -6,7 +6,8 @@
 
 <script lang="ts">
 	//TODO Autolayout: https://github.com/dagrejs/dagre/wiki https://www.npmjs.com/package/elkjs
-	import { Point, ToolInst, isPoint, RootData, Input, Output } from '@/types';
+	import { Point, isPoint, RootData } from '@/types';
+	import { ToolInst, Input, Output } from '@/tools'
 
 	interface Rect extends Point {
 		width: number;
@@ -27,13 +28,6 @@
 		field: Output;
 		rect: Rect;
 	}
-
-	// interface Connector {
-	// 	tool: ToolInst;
-	// 	name: string;
-	// 	type: 'input' | 'output';
-	// 	rect: Rect;
-	// }
 
 	const FONT = 'Arial';
 

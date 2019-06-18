@@ -1,4 +1,4 @@
-import { ToolDef, makeDef, ToolInst, Input, Output } from '@/types';
+import { ToolDef, makeDef, ToolInst, Input, Output } from '@/tools';
 
 class AddTool extends ToolInst {
 	private fst: Input = {
