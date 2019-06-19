@@ -4,20 +4,25 @@
 			<template slot="label">
 				{{ input.description }}
 				<b-tag type="is-primary">{{ input.name }}</b-tag>
-				<b-tag v-if="input.connection" type="is-primary">
-					<i class="fas fa-link"></i>
-					Connected to {{ input.connection.output.tool.name }}.{{ input.connection.output.name }}
-				</b-tag>
-				<b-tag v-else type="is-primary">
-					<i class="fas fa-unlink"></i>
-					Constant
-				</b-tag>
+				<span v-if="input.connection" style="clickable" @click="disconnect(input)">
+					<b-tag type="is-primary">
+						<i class="fas fa-link"></i>
+						Connected to {{ input.connection.output.tool.name }}.{{ input.connection.output.name }}
+					</b-tag>
+				</span>
+				<span v-else>
+					<!-- TODO Click to connect -->
+					<b-tag type="is-primary">
+						<i class="fas fa-unlink"></i>
+						Independent
+					</b-tag>
+				</span>
 			</template>
-			<b-input v-if="input.type == 'string'" :value="input.val" @input="set(input.name, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-input>
-			<b-input v-else-if="input.type == 'text'" type="textarea" :value="input.val" @input="set(input.name, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-input>
-			<b-switch v-else-if="input.type == 'boolean'" :value="input.val" @input="set(input.name, $event)" :disabled="input.connection !== undefined">{{ (input.connection && !input.connection.upToDate) ? "Loading..." : input.val ? "Enabled" : "Disabled" }}</b-switch>
-			<b-numberinput v-else-if="input.type == 'number'" :min="input.min" :max="input.max" :value="input.val" @input="set(input.name, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-numberinput>
-			<b-select v-else-if="input.type == 'enum'" :value="input.val" @input="set(input.name, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined">
+			<b-input v-if="input.type == 'string'" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-input>
+			<b-input v-else-if="input.type == 'text'" type="textarea" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-input>
+			<b-switch v-else-if="input.type == 'boolean'" :value="input.val" @input="set(input, $event)" :disabled="input.connection !== undefined">{{ (input.connection && !input.connection.upToDate) ? "Loading..." : input.val ? "Enabled" : "Disabled" }}</b-switch>
+			<b-numberinput v-else-if="input.type == 'number'" :min="input.min" :max="input.max" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-numberinput>
+			<b-select v-else-if="input.type == 'enum'" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined">
 				<option v-for="option in input.options" :value="option">{{ option }}</option>
 			</b-select>
 		</b-field>
@@ -41,8 +46,13 @@
 			},
 		},
 		methods: {
-			set(inputName: string, value: any) {
-				const input = this.rootData.selectedTool!.setInput(inputName, value);
+			set(input: Input, value: any) {
+				this.rootData.selectedTool!.setInput(input.name, value);
+				updateData(this.rootData.tools, input);
+			},
+			disconnect(input: Input) {
+				console.log('disconnect');
+				input.connection = undefined;
 				updateData(this.rootData.tools, input);
 			},
 		},
@@ -66,5 +76,9 @@
 				flex: 1 0 calc(100% - 20px);
 			}
 		}
+	}
+
+	.clickable {
+		cursor: pointer;
 	}
 </style>

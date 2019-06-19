@@ -65,9 +65,10 @@
 		@stripe: #eee;
 		@stripeSize: 40px;
 
-		/deep/ .is-loading:not(.field) {
+		/deep/ .is-loading:not(.field) input {
 			background: linear-gradient(-45deg, @stripe 25%, transparent 25%, transparent 50%, @stripe 50%, @stripe 75%, transparent 75%, transparent) top/@stripeSize @stripeSize #fff;
 			animation: stripe-animation 1s linear infinite;
+			// background: red !important;
 		}
 
 		@keyframes stripe-animation {

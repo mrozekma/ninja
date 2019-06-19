@@ -10,26 +10,32 @@
 		<div class="main-grid">
 			<div class="col">
 				<h1>Tools</h1>
-				<tool-list></tool-list>
+				<div class="scroll">
+					<tool-list></tool-list>
+				</div>
 			</div>
 			<div class="gutter-h" ref="gutter1"></div>
 			<div class="col">
 				<div class="center-grid">
-					<div class="col">
+					<div class="col scroll">
 						<h1>Properties</h1>
-						<property-view></property-view>
+						<div class="">
+							<property-view></property-view>
+						</div>
 					</div>
 					<div class="gutter-v" ref="gutter3"></div>
-					<div class="col">
+					<div class="col scroll">
 						<h1>Outputs</h1>
-						<output-view></output-view>
+						<div class="">
+							<output-view></output-view>
+						</div>
 					</div>
 				</div>
 			</div>
 			<div class="gutter-h" ref="gutter2"></div>
 			<div class="col">
 				<h1>Routing</h1>
-				<data-flow-canvas></data-flow-canvas>
+				<data-flow-canvas ref="dfcanvas"></data-flow-canvas>
 			</div>
 		</div>
 	</div>
@@ -68,7 +74,19 @@
 				rowGutters: [{
 					track: 1,
 					element: this.$refs.gutter3,
-				}]
+				}],
+				onDragStart: (direction: 'row' | 'column', track: number) => {
+					if(direction == 'column' && track == 3) {
+						//@ts-ignore
+						this.$refs.dfcanvas.shrink();
+					}
+				},
+				onDragEnd: (direction: 'row' | 'column', track: number) => {
+					if(direction == 'column' && track == 3) {
+						//@ts-ignore
+						this.$refs.dfcanvas.grow();
+					}
+				},
 			});
 		},
 	});
@@ -96,6 +114,11 @@ $colors: (
 </style>
 
 <style lang="less">
+	html {
+		// I have no clue why this is necessary, but the page is scrolling past the height of all containers, even <html>
+		overflow: hidden;
+	}
+
 	body {
 		height: 100vh;
 		background-color: #363636;
@@ -151,5 +174,15 @@ $colors: (
 
 	.field label {
 		color: #fff;
+	}
+
+	.scroll {
+		overflow-y: auto;
+		> h1 {
+			position: sticky;
+			top: 0;
+			left: 0;
+			z-index: 2;
+		}
 	}
 </style>
