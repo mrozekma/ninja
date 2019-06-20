@@ -19,7 +19,7 @@
 	//TODO Expand/collapse animation
 	import toolGroups from '@/tools/groups';
 	import { ToolGroup, RootData } from '@/types';
-	import { ToolDef } from '@/tools';
+	import { ToolDef, updateData } from '@/tools';
 
 	interface ToolGroupGUI extends ToolGroup {
 		expanded: boolean;
@@ -61,6 +61,7 @@
 				this.rootData.selectedTool = def.gen(name);
 				//TODO Don't necessarily create the tool yet
 				this.rootData.tools.push(this.rootData.selectedTool);
+				updateData(this.rootData.tools);
 			},
 		},
 	});

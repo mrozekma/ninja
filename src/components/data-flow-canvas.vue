@@ -1,5 +1,5 @@
 <template>
-	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown="mousedown" @mouseup="mouseup" @mousedown.right="test">
+	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown="mousedown" @mouseup="mouseup" @wheel="wheel">
 		{{ canvas }}
 	</canvas>
 </template>
@@ -25,6 +25,10 @@
 		}
 	}
 
+	function scale(target: Point | Rect, scale: number): Rect {
+		return { x: target.x * scale, y: target.y * scale, width: ((target as any).width || 0) * scale, height: ((target as any).height || 0) * scale };
+	}
+
 	interface InputConnector {
 		type: 'input';
 		field: Input;
@@ -42,6 +46,10 @@
 	} | {
 		state: 'over-background',
 		loc: Point, // Relative to canvas origin
+	} | {
+		state: 'dragging-background',
+		loc: Point, // Relative to canvas origin
+		start: Point, // Drag origin, relative to canvas origin
 	} | {
 		state: 'over-tool' | 'dragging-tool',
 		loc: Point, // Relative to tool origin
@@ -104,13 +112,16 @@
 				// canvas and ctx get set in mounted(), so I'm pretending that they're never undefined because after a certain point that's true
 				canvas: undefined as unknown as HTMLCanvasElement,
 				ctx: undefined as unknown as CanvasRenderingContext2D,
+				viewport: {
+					translation: { x: 0, y: 0 } as Point,
+					scale: 1.0,
+				},
 				mouse: { state: 'off-canvas' } as Mouse,
 				connecting: undefined as Connector | undefined, // One side of a currently pending connection
 			};
 		},
 		watch: {
 			cursor(val: string) {
-				console.log(val);
 				this.canvas.style.cursor = val;
 			},
 		},
@@ -125,11 +136,10 @@
 			for(const dep of ['rootData.tools', 'rootData.selectedTool', 'mouse', 'connecting']) {
 				this.$watch(dep, this.draw, { deep: true });
 			}
-			this.draw();
+			this.$watch('viewport', this.setupCanvas, { deep: true });
 		},
 		methods: {
 			setupCanvas() {
-				//TODO Panning/zooming
 				//TODO Deal with nodes that are now off-screen
 				const dpr = window.devicePixelRatio || 1;
 				if(!this.canvas.parentElement) {
@@ -137,14 +147,18 @@
 				}
 				const colRect = this.canvas.parentElement.getBoundingClientRect();
 				// Save space for the header
-				const width = colRect.width, height = colRect.height - 50;
+				const width = colRect.width, height = colRect.height - 55;
 				this.canvas.width = width * dpr;
 				this.canvas.height = height * dpr;
 				this.canvas.style.width = width + 'px';
 				this.canvas.style.height = height + 'px';
-				this.ctx.scale(dpr, dpr);
-				// this.ctx.translate(.5, .5); // https://stackoverflow.com/a/13294650/309308
-				// this.ctx.lineJoin = 'round';
+
+				const scale = this.viewport.scale * dpr;
+				// this.ctx.setTransform(scale, 0, 0, scale, this.viewport.translation.x, this.viewport.translation.y);
+				this.ctx.scale(scale, scale);
+				this.ctx.translate(this.viewport.translation.x, this.viewport.translation.y);
+
+				this.draw();
 			},
 
 			shrink() {
@@ -154,7 +168,6 @@
 
 			grow() {
 				this.setupCanvas();
-				this.draw();
 			},
 
 			*layoutConnectors(num: number, edge: Point & { width: number }): IterableIterator<Rect> {
@@ -231,8 +244,6 @@
 							loc = this.mouse.loc;
 							break;
 						case 'over-tool':
-							// pt - base
-							// I want tool loc + mouse loc
 							loc = {
 								x: this.mouse.tool.loc.x + this.mouse.loc.x,
 								y: this.mouse.tool.loc.y + this.mouse.loc.y,
@@ -251,6 +262,14 @@
 						this.drawConnection(this.connecting, loc);
 					}
 				}
+
+				this.ctx.save();
+				this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+				// this.ctx.strokeStyle = '#f00';
+				// this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+				this.ctx.fillStyle = '#fff';
+				this.text(`(${this.viewport.translation.x}, ${this.viewport.translation.y}) x ${this.viewport.scale}`, {x: 0, y: 0, width: this.canvas.width, height: this.canvas.height}, 10, 'left', 'bottom');
+				this.ctx.restore();
 			},
 
 			findFontSize(text: string, rect: Rect, max?: number) {
@@ -414,12 +433,24 @@
 
 			mousemove(e: MouseEvent) {
 				const loc: Point = {
-					x: e.offsetX,
-					y: e.offsetY,
+					x: e.offsetX / this.viewport.scale - this.viewport.translation.x,
+					y: e.offsetY / this.viewport.scale - this.viewport.translation.y,
 				};
 
-				// If currently dragging a tool, that continues. Update the tool's position
-				if(this.mouse.state == 'dragging-tool') {
+				// If currently dragging, that continues
+				if(this.mouse.state == 'dragging-background') {
+					// Translation uses untranslated coordinates (since changing the translation would change the coordinates)
+					const loc: Point = {
+						x: e.offsetX,
+						y: e.offsetY,
+					};
+					const rel = pointRelativeTo(loc, this.mouse.start);
+					this.viewport.translation = {
+						x: rel.x / this.viewport.scale,
+						y: rel.y / this.viewport.scale,
+					};
+					return;
+				} else if(this.mouse.state == 'dragging-tool') {
 					this.mouse.tool.loc = pointRelativeTo(loc, this.mouse.loc);
 					return;
 				}
@@ -454,11 +485,20 @@
 				this.mouse = {
 					state: 'off-canvas',
 				};
+				this.connecting = undefined;
 			},
 
 			mousedown(e: MouseEvent) {
 				switch(this.mouse.state) {
 					case 'over-background':
+						this.mouse = {
+							state: 'dragging-background',
+							loc: this.mouse.loc,
+							start: { // Convert back to untranslated coordinates
+								x: e.offsetX - this.viewport.translation.x * this.viewport.scale,
+								y: e.offsetY - this.viewport.translation.y * this.viewport.scale,
+							},
+						};
 						this.rootData.selectedTool = undefined;
 						this.connecting = undefined;
 						break;
@@ -490,10 +530,20 @@
 
 			mouseup(e: MouseEvent) {
 				switch(this.mouse.state) {
+					case 'dragging-background':
+						this.mouse = {
+							state: 'over-background',
+							loc: this.mouse.loc,
+						};
+						break;
 					case 'dragging-tool':
 						this.mouse.state = 'over-tool';
 						break;
 				}
+			},
+
+			wheel(e: WheelEvent) {
+				this.viewport.scale -= e.deltaY / 200;
 			},
 
 			connect(inputCon: InputConnector, outputCon: OutputConnector) {

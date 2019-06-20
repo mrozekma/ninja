@@ -78,7 +78,7 @@ export abstract class ToolInst {
 
 	constructor(public readonly def: ToolDef, name: string) {
 		this._name = name;
-		this._loc = {x: 0, y: 0};
+		this._loc = {x: 10, y: 10};
 	}
 
 	get name(): string { return this._name; }
