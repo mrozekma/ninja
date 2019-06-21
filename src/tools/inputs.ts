@@ -7,6 +7,7 @@ class AddTool extends ToolInst {
 		description: "First operand",
 		type: 'number',
 		val: 0,
+		connection: undefined,
 	};
 	private snd: Input = {
 		tool: this,
@@ -14,6 +15,7 @@ class AddTool extends ToolInst {
 		description: "Second operand",
 		type: 'number',
 		val: 0,
+		connection: undefined,
 	}
 	private sum: Output = {
 		tool: this,
@@ -26,23 +28,22 @@ class AddTool extends ToolInst {
 	readonly inputs: Input[] = [this.fst, this.snd];
 	readonly outputs: Output[] = [this.sum];
 
-	setInput(inputName: string, val: string | boolean | number) {
-		try {
-			return super.setInput(inputName, val);
-		} finally {
-			//NO Hack for testing
-			this.sum.val = (this.fst.val as number) + (this.snd.val as number);
-		}
+	async runImpl(): Promise<void> {
+		this.sum.val = (this.fst.val as number) + (this.snd.val as number);
+		// return new Promise(resolve => setTimeout(() => {
+		// 	this.sum.val = (this.fst.val as number) + (this.snd.val as number);
+		// 	resolve();
+		// }, 3000));
 	}
 }
 
 class FormTestTool extends ToolInst {
 	readonly inputs: Input[] = [
-		{ tool: this, name: 'string', description: "String input", type: 'string', val: 'string' },
-		{ tool: this, name: 'text', description: "Text input", type: 'text', val: 'text' },
-		{ tool: this, name: 'number', description: "Number input", type: 'number', val: 10 },
-		{ tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true },
-		{ tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar' },
+		{ tool: this, name: 'string', description: "String input", type: 'string', val: 'string', connection: undefined},
+		{ tool: this, name: 'text', description: "Text input", type: 'text', val: 'text', connection: undefined},
+		{ tool: this, name: 'number', description: "Number input", type: 'number', val: 10, connection: undefined},
+		{ tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true, connection: undefined},
+		{ tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar', connection: undefined},
 	];
 	readonly outputs: Output[] = [
 		{ tool: this, name: 'string', description: "String input", type: 'string', val: 'string' },
@@ -51,6 +52,8 @@ class FormTestTool extends ToolInst {
 		{ tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true },
 		{ tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar' },
 	];
+
+	async runImpl() {}
 }
 
 export default [

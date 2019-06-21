@@ -59,7 +59,6 @@
 					}
 				})();
 				this.rootData.selectedTool = def.gen(name);
-				//TODO Don't necessarily create the tool yet
 				this.rootData.tools.push(this.rootData.selectedTool);
 				updateData(this.rootData.tools);
 			},

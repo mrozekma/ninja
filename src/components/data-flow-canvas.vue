@@ -7,7 +7,7 @@
 <script lang="ts">
 	//TODO Autolayout: https://github.com/dagrejs/dagre/wiki https://www.npmjs.com/package/elkjs
 	import { Point, isPoint, RootData } from '@/types';
-	import { ToolInst, Input, Output, updateData } from '@/tools'
+	import { ToolInst, ToolState, Input, Output, updateData } from '@/tools'
 
 	interface Rect extends Point {
 		width: number;
@@ -58,6 +58,7 @@
 		state: 'over-connector',
 		loc: Point, // Relative to connector origin
 		connector: Connector,
+		valid: boolean,
 	})
 
 	interface ToolLayout {
@@ -86,9 +87,7 @@
 			cursor(): string {
 				if(this.connecting) {
 					if(this.mouse.state == 'over-connector') {
-						const con1 = this.mouse.connector, con2 = this.connecting;
-						// Check if this is a valid second connector
-						return (con1.type == con2.type || con1.field.tool == con2.field.tool) ? 'no-drop' : 'pointer';
+						return this.mouse.valid ? 'pointer' : 'no-drop';
 					}
 					// Otherwise when connecting, always use the default cursor, even when over other things
 					return 'default';
@@ -231,7 +230,7 @@
 							const output: Output = inputCon.field.connection.output;
 							const outputLayout = this.layout.find(layout => layout.tool == output.tool)!;
 							const outputCon = outputLayout.outputs.find(con => con.field == output)!;
-							this.drawConnection(inputCon, outputCon);
+							this.drawConnection(inputCon, outputCon, inputCon.field.connection.upToDate);
 						}
 					}
 				}
@@ -353,16 +352,19 @@
 				this.ctx.shadowColor = '#fff';
 				this.ctx.strokeStyle = '#fff';
 				this.ctx.stroke();
-				// if(tool.ephemeral) {
+				const clrs: { [K: number ]: string } = {
+					[ToolState.good]:    '#ff3860',
+					[ToolState.stale]:   '#aaa',
+					[ToolState.running]: '#714dd2',
+					[ToolState.failed]:  '#ffdd57',
+				};
 				// 	const grad = this.ctx.createLinearGradient(x, y, x + width, y + height);
 				// 	for(let i = 0; i + .05 <= 1; i += .1) {
 				// 		grad.addColorStop(i, 'hsl(348, 100%, 61%)');
 				// 		grad.addColorStop(i + .05, 'hsl(348, 100%, 70%)');
 				// 	}
 				// 	this.ctx.fillStyle = grad;
-				// } else {
-					this.ctx.fillStyle = 'hsl(348, 100%, 61%)';
-				// }
+				this.ctx.fillStyle = clrs[layout.tool.state];
 				this.ctx.fill();
 				this.ctx.shadowBlur = 0;
 
@@ -377,7 +379,7 @@
 
 				// Draw tool and connector labels
 				this.ctx.fillStyle = '#fff';
-				const textPad = 3;
+				const textPad = 5;
 				this.text(layout.tool.name, innerTextRect, 24, 'center', 'middle', true);
 				for(const { field, rect } of layout.inputs) {
 					this.text(field.name, {
@@ -397,7 +399,7 @@
 				}
 			},
 
-			drawConnection(source: Connector, sink: Connector | Point) {
+			drawConnection(source: Connector, sink: Connector | Point, upToDate: boolean = true) {
 				const sourceCenter = {
 					x: source.rect.x + source.rect.width / 2,
 					y: source.rect.y + source.rect.height / 2,
@@ -406,6 +408,9 @@
 					x: sink.rect.x + sink.rect.width / 2,
 					y: sink.rect.y + sink.rect.height / 2,
 				};
+
+				this.ctx.strokeStyle = upToDate ? 'hsl(348, 100%, 31%)' : '#888';
+				this.ctx.fillStyle = upToDate ? 'hsl(348, 100%, 61%)' : '#aaa';
 
 				// Line between the connectors
 				//TODO Bend differently if the output tool is below the input tool
@@ -416,7 +421,6 @@
 					sinkCenter.x, sinkCenter.y + (source.type == 'input' ? 50 : -50),
 					sinkCenter.x, sinkCenter.y,
 				);
-				this.ctx.strokeStyle = '#fff';
 				this.ctx.stroke();
 
 				// Connector circles (these are drawn after the line so the fill is on top)
@@ -424,9 +428,7 @@
 					this.ctx.beginPath();
 					this.ctx.moveTo(point.x, point.y); //TODO Does nothing?
 					this.ctx.arc(point.x, point.y, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
-					this.ctx.strokeStyle = 'hsl(348, 100%, 31%)';
 					this.ctx.stroke();
-					this.ctx.fillStyle = 'hsl(348, 100%, 61%)';
 					this.ctx.fill();
 				}
 			},
@@ -463,6 +465,7 @@
 								state: 'over-connector',
 								connector,
 								loc: pointRelativeTo(loc, connector.rect),
+								valid: !this.connecting || (this.connecting.type != connector.type && this.connecting.field.tool != connector.field.tool),
 							}
 						}
 					}
@@ -507,6 +510,9 @@
 						this.rootData.selectedTool = this.mouse.tool;
 						break;
 					case 'over-connector':
+						if(!this.mouse.valid) {
+							return;
+						}
 						//TODO Handle dragging a connection instead of clicking the connectors separately
 						if(this.connecting) {
 							// Second half of the connection
