@@ -18,7 +18,10 @@
 					</b-tag>
 				</span>
 			</template>
-			<b-input v-if="input.type == 'string'" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-input>
+			<b-message v-if="input.connection && input.connection.error" type="is-danger">
+				{{ input.connection.error }}
+			</b-message>
+			<b-input v-else-if="input.type == 'string'" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-input>
 			<b-input v-else-if="input.type == 'text'" type="textarea" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-input>
 			<b-switch v-else-if="input.type == 'boolean'" :value="input.val" @input="set(input, $event)" :disabled="input.connection !== undefined">{{ (input.connection && !input.connection.upToDate) ? "Loading..." : input.val ? "Enabled" : "Disabled" }}</b-switch>
 			<b-numberinput v-else-if="input.type == 'number'" :min="input.min" :max="input.max" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-numberinput>

@@ -41,7 +41,7 @@ class FormTestTool extends ToolInst {
 	readonly inputs: Input[] = [
 		{ tool: this, name: 'string', description: "String input", type: 'string', val: 'string', connection: undefined},
 		{ tool: this, name: 'text', description: "Text input", type: 'text', val: 'text', connection: undefined},
-		{ tool: this, name: 'number', description: "Number input", type: 'number', val: 10, connection: undefined},
+		{ tool: this, name: 'number', description: "Number input", type: 'number', val: 10, min: 5, max: 15, connection: undefined},
 		{ tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true, connection: undefined},
 		{ tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar', connection: undefined},
 	];

@@ -1,5 +1,5 @@
 <template>
-	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown="mousedown" @mouseup="mouseup" @wheel="wheel">
+	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown.left="mousedown" @mouseup.left="mouseup" @wheel="wheel">
 		{{ canvas }}
 	</canvas>
 </template>
@@ -23,10 +23,6 @@
 			x: pt.x - base.x,
 			y: pt.y - base.y,
 		}
-	}
-
-	function scale(target: Point | Rect, scale: number): Rect {
-		return { x: target.x * scale, y: target.y * scale, width: ((target as any).width || 0) * scale, height: ((target as any).height || 0) * scale };
 	}
 
 	interface InputConnector {
@@ -131,11 +127,10 @@
 
 			window.addEventListener('resize', () => this.grow());
 
-			//TODO Is there a way to detect these dependencies? It seems like there should be
-			for(const dep of ['rootData.tools', 'rootData.selectedTool', 'mouse', 'connecting']) {
-				this.$watch(dep, this.draw, { deep: true });
+			// Call these functions reactively when their dependencies change
+			for(const fn of [ this.setupCanvas, this.draw ]) {
+				this.$watch(() => { fn() }, () => fn());
 			}
-			this.$watch('viewport', this.setupCanvas, { deep: true });
 		},
 		methods: {
 			setupCanvas() {
@@ -502,8 +497,11 @@
 								y: e.offsetY - this.viewport.translation.y * this.viewport.scale,
 							},
 						};
-						this.rootData.selectedTool = undefined;
-						this.connecting = undefined;
+						if(this.connecting) {
+							this.connecting = undefined;
+						} else {
+							this.rootData.selectedTool = undefined;
+						}
 						break;
 					case 'over-tool':
 						this.mouse.state = 'dragging-tool';
@@ -556,6 +554,7 @@
 				inputCon.field.connection = {
 					output: outputCon.field,
 					upToDate: false,
+					error: undefined,
 				};
 				updateData(this.rootData.tools, inputCon.field);
 			},

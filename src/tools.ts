@@ -20,6 +20,7 @@ export function makeDef(ctor: { new(def: ToolDef, name: string): ToolInst }, nam
 export interface RemoteConnection {
 	output: Output;
 	upToDate: boolean;
+	error: string | undefined;
 }
 
 export type Output = {
@@ -48,28 +49,57 @@ export type Input = Output & {
 	connection: RemoteConnection | undefined; // This is mandatory (i.e. not "connection?: RemoteConnection") so that Vue has a chance to attach a setter
 }
 
-function convertToString(val: string | boolean | number): string | Error {
-	return (typeof val === 'string') ? val :
-	       (typeof val === 'boolean') ? (val ? 'true' : 'false') :
-	       (typeof val === 'number') ? '' + val :
-	       new Error('Impossible');
-}
-
-function convertToBoolean(val: string | boolean | number): boolean | Error {
-	return (typeof val === 'string') ? (['true', 'yes'].indexOf(val.toLowerCase()) >= 0) :
-	       (typeof val === 'boolean') ? val :
-	       (typeof val === 'number') ? (val != 0) :
-	       new Error('Impossible');
-}
-
-function convertToNumber(val: string | boolean | number): number | Error {
-	if(typeof val === 'string') {
-		const rtn = parseInt(val, 10);
-		return !isNaN(rtn) ? rtn : new Error(`Not a number: ${val}`);
+function convertToString(val: string | boolean | number): string {
+	switch(typeof val) {
+		case 'string': return val;
+		case 'boolean': return val ? 'true' : 'false';
+		case 'number': return '' + val;
 	}
-	return (typeof val === 'boolean') ? (val ? 1 : 0) :
-	       (typeof val === 'number') ? val :
-	       new Error('Impossible');
+}
+
+function convertToBoolean(val: string | boolean | number): boolean {
+	switch(typeof val) {
+		case 'string': return ['true', 'yes'].indexOf(val.toLowerCase()) >= 0;
+		case 'boolean': return val;
+		case 'number': return val != 0;
+	}
+}
+
+function convertToNumber(val: string | boolean | number): number {
+	switch(typeof val) {
+		case 'string':
+			const rtn = parseInt(val, 10);
+			if(isNaN(rtn)) {
+				throw new Error(`Not a number: ${val}`);
+			}
+			return rtn;
+		case 'boolean': return val ? 1 : 0;
+		case 'number': return val;
+	}
+}
+
+function convertToInputType(val: string | boolean | number, input: Input): string | boolean | number {
+	switch(input.type) {
+		case 'string':
+		case 'text':
+			return convertToString(val);
+		case 'enum': {
+			const rtn = convertToString(val);
+			if(input.options.indexOf(rtn) < 0) {
+				throw new Error(`Invalid enum value: ${rtn}`);
+			}
+			return rtn; }
+		case 'boolean':
+			return convertToBoolean(val);
+		case 'number': {
+			const rtn = convertToNumber(val);
+			if(input.min && rtn < input.min) {
+				throw new Error(`${rtn} < minimum ${input.min}`);
+			} else if(input.max && rtn > input.max) {
+				throw new Error(`${rtn} > maximum ${input.max}`);
+			}
+			return rtn; }
+	}
 }
 
 export enum ToolState { stale, running, good, failed }
@@ -188,6 +218,11 @@ export async function updateData(tools: ToolInst[], change?: Input) {
 				console.error('Data cycle', Array.from(worklist));
 				for(const tool of worklist) {
 					tool.state = ToolState.failed;
+					for(const input of tool.inputs) {
+						if(input.connection) {
+							input.connection.error = 'Data cycle';
+						}
+					}
 				}
 				break;
 			}
@@ -204,7 +239,13 @@ export async function updateData(tools: ToolInst[], change?: Input) {
 			for(const output of tool.outputs) {
 				const depInputs = outputConnectedTo[`${tool.name}.${output.name}`];
 				for(const input of depInputs || []) {
-					input.val = input.connection!.output.val;
+					try {
+						input.val = convertToInputType(input.connection!.output.val, input);
+					} catch(e) {
+						input.connection!.error = `Unable to convert ${output.type} ${tool.name}.${output.name} to ${input.type} ${input.tool.name}.${input.name}: ${e.message}`;
+						//TODO Keep going with other tool runs. Need to keep the dep graph instead of converting it to a linear run order
+						throw new Error(input.connection!.error);
+					}
 					input.connection!.upToDate = true;
 				}
 			}
