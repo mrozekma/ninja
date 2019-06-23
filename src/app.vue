@@ -6,7 +6,14 @@
 					<i class="fas fa-user-ninja"></i> Ninja
 				</div>
 			</div>
+			<div class="navbar-item has-dropdown is-hoverable">
+				<a class="navbar-link">Data</a>
+				<div class="navbar-dropdown">
+					<a class="navbar-item" @click="runAll"><i class="fas fa-play-circle"></i> Run All</a>
+				</div>
+			</div>
 		</nav>
+
 		<div class="main-grid">
 			<div class="col">
 				<h1>Tools</h1>
@@ -56,12 +63,19 @@
 	//@ts-ignore No declaration file
 	import Split from 'split-grid';
 
+	import { RootData } from './types';
 	import ToolList from './components/tool-list.vue';
 	import PropertyView from './components/property-view.vue';
 	import DataFlowCanvas from './components/data-flow-canvas.vue';
 	import OutputView from './tools/output-view.vue';
 	export default Vue.extend({
 		components: { ToolList, PropertyView, DataFlowCanvas, OutputView },
+		computed: {
+			rootData(): RootData {
+				//@ts-ignore
+				return this.$root;
+			},
+		},
 		mounted() {
 			Split({
 				columnGutters: [{
@@ -88,6 +102,11 @@
 					}
 				},
 			});
+		},
+		methods: {
+			runAll() {
+				this.rootData.toolManager.updateData();
+			},
 		},
 	});
 </script>
@@ -129,8 +148,25 @@ $colors: (
 			font-family: Montserrat;
 			font-size: 18pt;
 			text-transform: uppercase;
+			margin-right: 30px;
 			i {
 				margin-right: 5px;
+			}
+		}
+		.navbar-item {
+			i {
+				margin-right: 5px;
+			}
+
+			.navbar-link {
+				color: #fff;
+				&::after {
+					border-color: #bf2a48;
+				}
+			}
+
+			&:hover .navbar-link {
+				background-color: #801c30 !important;
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-import { ToolDef, makeDef, ToolInst, Input, Output } from '@/tools';
+import { makeDef, ToolInst, Input, Output } from '@/tools';
 
 class AddTool extends ToolInst {
 	private fst: Input = {
@@ -30,10 +30,6 @@ class AddTool extends ToolInst {
 
 	async runImpl(): Promise<void> {
 		this.sum.val = (this.fst.val as number) + (this.snd.val as number);
-		// return new Promise(resolve => setTimeout(() => {
-		// 	this.sum.val = (this.fst.val as number) + (this.snd.val as number);
-		// 	resolve();
-		// }, 3000));
 	}
 }
 
@@ -56,7 +52,45 @@ class FormTestTool extends ToolInst {
 	async runImpl() {}
 }
 
+class SleepTool extends ToolInst {
+	//TODO Generics so inp.type could match out.type? Doubt this comes up in real tools
+	private inp: Input = {
+		tool: this,
+		name: 'inp',
+		description: 'Input',
+		type: 'number',
+		val: 0,
+		connection: undefined,
+	};
+	private secs: Input = {
+		tool: this,
+		name: 'secs',
+		description: 'Seconds to sleep',
+		type: 'number',
+		val: 3,
+		connection: undefined,
+	};
+	private out: Output = {
+		tool: this,
+		name: 'out',
+		description: 'Output',
+		type: 'number',
+		val: 0,
+	};
+
+	readonly inputs: Input[] = [ this.inp, this.secs ];
+	readonly outputs: Output[] = [ this.out ];
+
+	runImpl(): Promise<void> {
+		return new Promise(resolve => setTimeout(() => {
+			this.out.val = this.inp.val;
+			resolve();
+		}, this.secs.val as number * 1000));
+	}
+}
+
 export default [
 	makeDef(AddTool, 'Add', 'Add two numbers'),
 	makeDef(FormTestTool, 'Form test', 'Form test tool'),
+	makeDef(SleepTool, 'Sleep', 'Sleep for set amount of time'),
 ];

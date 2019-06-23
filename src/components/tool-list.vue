@@ -19,7 +19,7 @@
 	//TODO Expand/collapse animation
 	import toolGroups from '@/tools/groups';
 	import { ToolGroup, RootData } from '@/types';
-	import { ToolDef, updateData } from '@/tools';
+	import { ToolDef } from '@/tools';
 
 	interface ToolGroupGUI extends ToolGroup {
 		expanded: boolean;
@@ -45,22 +45,7 @@
 		},
 		methods: {
 			selectTool(def: ToolDef) {
-				// Find a free name based on the tool name
-				const names = new Set(this.rootData.tools.map(tool => tool.name));
-				const name: string = (() => {
-					if(!names.has(def.name)) {
-						return def.name;
-					}
-					for(let i = 2; ; i++) {
-						const name = def.name + i;
-						if(!names.has(name)) {
-							return name;
-						}
-					}
-				})();
-				this.rootData.selectedTool = def.gen(name);
-				this.rootData.tools.push(this.rootData.selectedTool);
-				updateData(this.rootData.tools);
+				this.rootData.selectedTool = this.rootData.toolManager.addTool(def);
 			},
 		},
 	});

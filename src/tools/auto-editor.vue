@@ -34,7 +34,7 @@
 
 <script lang="ts">
 	import { RootData } from '@/types';
-	import { Input, updateData } from '@/tools';
+	import { Input } from '@/tools';
 
 	import Vue from 'vue';
 	export default Vue.extend({
@@ -50,13 +50,10 @@
 		},
 		methods: {
 			set(input: Input, value: any) {
-				this.rootData.selectedTool!.setInput(input.name, value);
-				updateData(this.rootData.tools, input);
+				this.rootData.toolManager.setInput(input, value);
 			},
 			disconnect(input: Input) {
-				console.log('disconnect');
-				input.connection = undefined;
-				updateData(this.rootData.tools, input);
+				this.rootData.toolManager.disconnect(input);
 			},
 		},
 	});

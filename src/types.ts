@@ -1,4 +1,4 @@
-import { ToolDef, ToolInst } from './tools';
+import { ToolDef, ToolInst, ToolManager } from './tools';
 
 export interface ToolGroup {
 	name: string;
@@ -16,6 +16,6 @@ export function isPoint(pt: any): pt is Point {
 }
 
 export interface RootData {
-	tools: ToolInst[];
+	toolManager: ToolManager,
 	selectedTool?: ToolInst;
 }

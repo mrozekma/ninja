@@ -1,5 +1,5 @@
 import { RootData } from '@/types';
-import { ToolInst } from '@/tools';
+import { ToolManager, ToolInst } from '@/tools';
 
 import Vue from 'vue';
 import App from './app.vue';
@@ -7,7 +7,7 @@ import App from './app.vue';
 Vue.config.productionTip = false;
 
 const rootData: RootData = {
-	tools: [] as ToolInst[],
+	toolManager: new ToolManager(),
 	selectedTool: undefined as ToolInst | undefined,
 };
 

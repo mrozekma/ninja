@@ -7,7 +7,7 @@
 <script lang="ts">
 	//TODO Autolayout: https://github.com/dagrejs/dagre/wiki https://www.npmjs.com/package/elkjs
 	import { Point, isPoint, RootData } from '@/types';
-	import { ToolInst, ToolState, Input, Output, updateData } from '@/tools'
+	import { ToolInst, ToolState, Input, Output } from '@/tools'
 
 	interface Rect extends Point {
 		width: number;
@@ -99,7 +99,7 @@
 				}
 			},
 			layout(): ToolLayout[] {
-				return this.rootData.tools.map(this.layoutTool);
+				return this.rootData.toolManager.tools.map(this.layoutTool);
 			},
 		},
 		data() {
@@ -551,23 +551,14 @@
 			},
 
 			connect(inputCon: InputConnector, outputCon: OutputConnector) {
-				inputCon.field.connection = {
-					output: outputCon.field,
-					upToDate: false,
-					error: undefined,
-				};
-				updateData(this.rootData.tools, inputCon.field);
+				this.rootData.toolManager.connect(inputCon.field, outputCon.field);
 			},
 
-			disconnect(inputCon: Connector) {
-				if(inputCon.type != 'input') {
-					throw new Error("Bad connector type");
-				}
+			disconnect(inputCon: InputConnector) {
 				if(inputCon.field.connection === undefined) {
 					return false;
 				} else {
-					inputCon.field.connection = undefined;
-					updateData(this.rootData.tools, inputCon.field);
+					this.rootData.toolManager.disconnect(inputCon.field);
 					return true;
 				}
 			},

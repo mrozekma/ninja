@@ -1,12 +1,12 @@
 import { ToolGroup } from '@/types';
 
-import inputs from '@/tools/inputs';
+import test from '@/tools/test';
 
 const groups: ToolGroup[] = [
 	{
-		name: 'Inputs',
-		icon: 'far fa-keyboard',
-		tools: inputs,
+		name: 'Test',
+		icon: 'fas fa-vial',
+		tools: test,
 	}
 ];
 export default groups;

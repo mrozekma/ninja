@@ -23,6 +23,7 @@ export interface RemoteConnection {
 	error: string | undefined;
 }
 
+//TODO Generic here?
 export type Output = {
 	name: string;
 	description: string;
@@ -102,7 +103,7 @@ function convertToInputType(val: string | boolean | number, input: Input): strin
 	}
 }
 
-export enum ToolState { stale, running, good, failed }
+export enum ToolState { stale, running, good, failed, cycle }
 
 export abstract class ToolInst {
 	private _name: string;
@@ -128,12 +129,11 @@ export abstract class ToolInst {
 	abstract get outputs(): Output[];
 
 	// Called when the user is manually setting a input's value
-	setInput(inputName: string, val: string | boolean | number): Input {
-		const input = this.inputs.find(input => input.name == inputName);
-		if(!input) {
-			throw new Error(`Tool ${this.name} has no input '${inputName}'`);
+	setInput(input: Input, val: string | boolean | number) {
+		if(input.tool != this) {
+			throw new Error(`Input for wrong tool`);
 		} else if(input.connection !== undefined) {
-			throw new Error(`Input ${this.name}.${inputName} is bound to ${input.connection.output.tool.name}.${input.connection.output.name}`);
+			throw new Error(`Input ${this.name}.${input.name} is bound to ${input.connection.output.tool.name}.${input.connection.output.name}`);
 		}
 
 		const expectedType = (input.type === 'text' || input.type === 'enum') ? 'string' : input.type;
@@ -147,7 +147,6 @@ export abstract class ToolInst {
 		console.log(`${this.name}.${input.name} = ${val}`);
 		input.val = val;
 		this.state = ToolState.stale;
-		return input;
 	}
 
 	//TODO
@@ -172,83 +171,195 @@ export abstract class ToolInst {
 	abstract async runImpl(): Promise<void>;
 }
 
-//TODO It would be nice for this to get called automatically instead of by every spot that updates an input. Investigate RxJS or similar libraries
-//TODO Only recompute tools that need it
-let updateId = 0;
-export async function updateData(tools: ToolInst[], change?: Input) {
-	const myId = ++updateId;
-	console.log(`Update data`); // triggered by change to ${change!.tool.name}.${change!.name}`);
+class MapWithDefault<K, V> extends Map<K, V> {
+	constructor(private makeDefaultFn: () => V) {
+		super();
+	}
 
-	// Make dependency graph.
-	const toolDependsOn: { [K: string]: ToolInst[] } = {};
-	const outputConnectedTo: { [K: string]: Input[] } = {};
-	for(const tool of tools) {
-		tool.state = ToolState.stale;
-		const myToolDeps: ToolInst[] = []
-		toolDependsOn[tool.name] = myToolDeps;
-		for(const input of tool.inputs) {
-			if(input.connection) {
-				myToolDeps.push(input.connection.output.tool);
-				const outputFQN = `${input.connection.output.tool.name}.${input.connection.output.name}`;
-				let myOutputDeps = outputConnectedTo[outputFQN];
-				if(myOutputDeps === undefined) {
-					myOutputDeps = outputConnectedTo[outputFQN] = [];
-				}
-				myOutputDeps.push(input);
-				input.connection.upToDate = false;
+	get(key: K): V {
+		let rtn = super.get(key);
+		if(rtn === undefined) {
+			rtn = this.makeDefaultFn();
+			this.set(key, rtn);
+		}
+		return rtn;
+	}
+}
+
+export class ToolManager {
+	constructor(private _tools: ToolInst[] = []) {}
+
+	get tools(): Readonly<ToolInst[]> {
+		return this._tools;
+	}
+
+	addTool(def: ToolDef): ToolInst {
+		// Find a free name based on the tool name
+		const names = new Set(this.tools.map(tool => tool.name));
+		const name: string = (() => {
+			if(!names.has(def.name)) {
+				return def.name;
 			}
+			for(let i = 2; ; i++) {
+				const name = def.name + i;
+				if(!names.has(name)) {
+					return name;
+				}
+			}
+		})();
+		const tool = def.gen(name);
+		this._tools.push(tool);
+		this.updateData(tool);
+		return tool;
+	}
+
+	removeTool(tool: ToolInst) {
+		let idx: number | undefined = undefined;
+		for(const [seekIdx, seek] of this.tools.entries()) {
+			if(seek === tool) {
+				idx = seekIdx;
+				continue;
+			}
+			for(const input of seek.inputs) {
+				if(input.connection && input.connection.output.tool == tool) {
+					input.connection = undefined;
+				}
+			}
+		}
+		if(idx === undefined) {
+			throw new Error(`Unrecognized tool: ${tool.name}`);
+		}
+		this._tools.splice(idx, 1);
+	}
+
+	connect(input: Input, output: Output) {
+		input.connection = {
+			output,
+			error: undefined,
+			upToDate: false,
+		};
+		this.setInputIndirect(input);
+		this.updateData(input);
+	}
+
+	disconnect(input: Input) {
+		if(input.connection === undefined) {
+			throw new Error(`Tried to disconnect independent input ${input.tool.name}.${input.name}`);
+		}
+		const upToDate = input.connection.upToDate;
+		input.connection = undefined;
+		// It's unlikely that a disconnection requires an update, but it might be fixing a cycle
+		if(!upToDate) {
+			this.updateData(input);
 		}
 	}
 
-	// Figure out resolution order
-	const updateOrder: ToolInst[][] = [];
-	{
-		const worklist: Set<ToolInst> = new Set(tools);
-		while(worklist.size > 0) {
-			const thisBlock: ToolInst[] = [];
-			for(const tool of worklist) {
-				if(toolDependsOn[tool.name].every(tool => !worklist.has(tool))) {
-					thisBlock.push(tool);
-				}
-			}
-			if(thisBlock.length > 0) {
-				updateOrder.push(thisBlock);
-				thisBlock.forEach(tool => worklist.delete(tool));
+	setInput(input: Input, val: string | boolean | number) {
+		input.tool.setInput(input, val);
+		this.updateData(input);
+	}
+
+	setInputIndirect(input: Input) {
+		if(input.connection === undefined) {
+			throw new Error(`Input ${input.tool.name}.${input.name} is unbound`);
+		}
+		const output = input.connection.output;
+		try {
+			input.val = convertToInputType(output.val, input);
+			input.connection!.upToDate = true;
+		} catch(e) {
+			input.connection!.error = `Unable to convert ${output.type} ${output.tool.name}.${output.name} to ${input.type} ${input.tool.name}.${input.name}: ${e.message}`;
+		}
+}
+
+	private async updateSetRecursively<T>(set: Set<T>, updateFn: (set: Set<T>) => void | Promise<void>) {
+		let size = -1;
+		while(size != set.size) {
+			size = set.size;
+			await updateFn(set);
+		}
+	}
+
+	private updateId = 0;
+	//TODO It would be nice for this to get called automatically instead of by every spot that updates an input. Investigate RxJS or similar libraries
+	//TODO Remove debug output
+	async updateData(change?: Input | ToolInst) {
+		const myId = ++this.updateId;
+		console.log('Update data', myId, change);
+
+		// Find every tool affected by this change
+		const outOfDate = new Set<ToolInst>((() => {
+			if(change === undefined) {
+				return this.tools;
+			} else if((change as Input).tool) {
+				return [(change as Input).tool];
 			} else {
-				console.error('Data cycle', Array.from(worklist));
-				for(const tool of worklist) {
-					tool.state = ToolState.failed;
+				return [change as ToolInst];
+			}
+		})());
+		try {
+			const connections = new MapWithDefault<Output, Set<Input>>(() => new Set<Input>());
+			await this.updateSetRecursively(outOfDate, set => {
+				for(const tool of this.tools) {
 					for(const input of tool.inputs) {
+						if(myId != this.updateId) {
+							throw 'superceded';
+						}
 						if(input.connection) {
-							input.connection.error = 'Data cycle';
+							console.log(`${input.connection.output.name} -> ${input.name}`);
+							connections.get(input.connection.output).add(input);
+							if(set.has(input.connection.output.tool)) {
+								input.connection.upToDate = false;
+								set.add(tool);
+							}
 						}
 					}
 				}
-				break;
-			}
-		}
-	}
+			});
 
-	for(const block of updateOrder) {
-		if(myId != updateId) {
-			console.log("Abandoning old updateData");
-			return;
-		}
-		await Promise.all(block.map(tool => tool.run()));
-		for(const tool of block) {
-			for(const output of tool.outputs) {
-				const depInputs = outputConnectedTo[`${tool.name}.${output.name}`];
-				for(const input of depInputs || []) {
-					try {
-						input.val = convertToInputType(input.connection!.output.val, input);
-					} catch(e) {
-						input.connection!.error = `Unable to convert ${output.type} ${tool.name}.${output.name} to ${input.type} ${input.tool.name}.${input.name}: ${e.message}`;
-						//TODO Keep going with other tool runs. Need to keep the dep graph instead of converting it to a linear run order
-						throw new Error(input.connection!.error);
+			console.log(`Update ${myId}`, outOfDate, connections);
+
+			// Recompute tools
+			//TODO Not positive this is guaranteed to resolve in certain cycle conditions, but can't come up with any to prove it
+			await this.updateSetRecursively(outOfDate, async (set) => {
+				console.log('Running. Remaining:', [...set].map(x => x.name));
+				const promises: Promise<void>[] = [];
+				for(const tool of set) {
+					if(myId != this.updateId) {
+						throw 'superceded';
 					}
-					input.connection!.upToDate = true;
+					if(tool.inputs.every(input => input.connection === undefined || input.connection.upToDate)) {
+						set.delete(tool);
+						promises.push(tool.run().then(() => {
+							console.log(`  Finished with ${tool.name}`);
+							for(const output of tool.outputs) {
+								console.log(`    Setting ${output.name}`);
+								for(const input of connections.get(output)) {
+									console.log(`      Connected to ${input.name}`);
+									this.setInputIndirect(input);
+									if(input.connection!.error !== undefined) {
+										input.tool.state = ToolState.failed;
+									}
+									set.add(input.tool);
+								}
+							}
+						}));
+					}
 				}
+				await Promise.all(promises);
+			});
+		} catch(e) {
+			if(e === 'superceded') {
+				console.log(`Update ${myId} superceded`);
+				return;
 			}
+			throw e;
+		}
+
+		console.log('Done. Remaining:', outOfDate.size);
+
+		for(const tool of outOfDate) {
+			tool.state = ToolState.cycle;
 		}
 	}
 }
