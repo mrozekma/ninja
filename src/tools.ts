@@ -1,4 +1,10 @@
 import { Point } from './types';
+import importSchema, { Tools as ImportedData } from './tools.schema';
+
+import { Base64 } from 'js-base64';
+//@ts-ignore No declaration file
+import cleanDeep from 'clean-deep';
+import { Validator } from 'jsonschema';
 
 export type ToolDef = {
 	name: string;
@@ -149,14 +155,6 @@ export abstract class ToolInst {
 		this.state = ToolState.stale;
 	}
 
-	//TODO
-	// connectInput(inputName: string, output: Output) {
-	// 	const input = this.inputs.find(input => input.name == inputName);
-	// 	if(!input) {
-	// 		throw new Error(`Tool ${this.name} has no input '${inputName}'`);
-	// 	}
-	// }
-
 	async run(): Promise<void> {
 		this.state = ToolState.running;
 		try {
@@ -169,6 +167,26 @@ export abstract class ToolInst {
 	}
 
 	abstract async runImpl(): Promise<void>;
+
+	serialize(): object {
+		return {
+			type: this.def.name,
+			name: this.name,
+			loc: this.loc,
+			inputs: this.inputs.reduce<{ [K: string]: string | boolean | number }>((map, input) => {
+				if(input.connection === undefined) {
+					map[input.name] = input.val;
+				}
+				return map;
+			}, {}),
+			connections: this.inputs.reduce<{ [K: string]: [ string, string ] }>((map, input) => {
+				if(input.connection !== undefined) {
+					map[input.name] = [ input.connection.output.tool.name, input.connection.output.name ];
+				}
+				return map;
+			}, {}),
+		};
+	}
 }
 
 class MapWithDefault<K, V> extends Map<K, V> {
@@ -191,6 +209,18 @@ export class ToolManager {
 
 	get tools(): Readonly<ToolInst[]> {
 		return this._tools;
+	}
+
+	set tools(tools: Readonly<ToolInst[]>) {
+		this._tools.splice(0, this._tools.length, ...tools);
+		this.updateData();
+	}
+
+	swapToolList(tools: ToolInst[]): ToolInst[] {
+		const old = this._tools;
+		this._tools = tools;
+		this.updateData();
+		return old;
 	}
 
 	addTool(def: ToolDef): ToolInst {
@@ -361,5 +391,75 @@ export class ToolManager {
 		for(const tool of outOfDate) {
 			tool.state = ToolState.cycle;
 		}
+	}
+
+	serialize(fmt: 'compact' | 'friendly' | 'base64'): string {
+		const obj = {
+			version: 1,
+			tools: this.tools.map(tool => tool.serialize()),
+		};
+		switch(fmt) {
+			case 'compact': return JSON.stringify(cleanDeep(obj));
+			case 'friendly': return JSON.stringify(obj, null, '\t');
+			case 'base64': return Base64.encodeURI(JSON.stringify(obj));
+		}
+	}
+
+	// availableDefs is passed in here because importing toolGroups causes a circular dependency I can't easily resolve
+	deserialize(data: string, availableDefs: ToolDef[]) {
+		if(!data.startsWith('{')) {
+			data = Base64.decode(data);
+		}
+		const obj: ImportedData = JSON.parse(data);
+		new Validator().validate(obj, importSchema, { throwError: true });
+		console.log('Importing', obj);
+
+		// Instantiate all the tools and set their locations and fixed inputs
+		const insts = new Map<String, ToolInst>();
+		for(const tool of obj.tools) {
+			const def = availableDefs.find(def => def.name == tool.type);
+			if(def === undefined) {
+				throw new Error(`Unknown tool type: ${tool.type}`);
+			}
+			const inst = def.gen(tool.name);
+			insts.set(tool.name, inst);
+			inst.loc = tool.loc;
+			for(const [ name, val ] of Object.entries(tool.inputs || {})) {
+				const input = inst.inputs.find(input => input.name == name);
+				if(input === undefined) {
+					throw new Error(`Unknown input: ${tool.name}.${name}`);
+				}
+				inst.setInput(input, val);
+			}
+		}
+
+		// Now that all tools are instantiated, go back and wire connections
+		for(const tool of obj.tools) {
+			if(tool.connections) {
+				const inst = insts.get(tool.name)!;
+				for(const [ inputName, [ outputToolName, outputName ]] of Object.entries(tool.connections)) {
+					const input = inst.inputs.find(input => input.name == inputName);
+					if(input === undefined) {
+						throw new Error(`Unknown input: ${tool.name}.${inputName}`);
+					}
+					const outputTool = insts.get(outputToolName);
+					if(outputTool === undefined) {
+						throw new Error(`Unknown output tool connected to ${tool.name}.${inputName}: ${outputToolName}`);
+					}
+					const output = outputTool.outputs.find(output => output.name == outputName);
+					if(output === undefined) {
+						throw new Error(`Unknown output: ${outputToolName}.${outputName}`);
+					}
+					input.connection = {
+						output,
+						error: undefined,
+						upToDate: false,
+					};
+				}
+			}
+		}
+
+		// Success. Replace the existing tools with the loaded set
+		this.tools = Array.from(insts.values());
 	}
 }

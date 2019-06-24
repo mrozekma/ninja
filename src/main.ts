@@ -8,7 +8,7 @@ Vue.config.productionTip = false;
 
 const rootData: RootData = {
 	toolManager: new ToolManager(),
-	selectedTool: undefined as ToolInst | undefined,
+	selectedTool: undefined as ToolInst | undefined, //TODO Move to ToolManager?
 };
 
 new Vue({

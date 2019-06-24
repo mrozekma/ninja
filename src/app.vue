@@ -6,13 +6,41 @@
 					<i class="fas fa-user-ninja"></i> Ninja
 				</div>
 			</div>
+			<b-tooltip label="New" position="is-bottom">
+				<a class="navbar-item navbar-toolbar-item" @click="clear"><i class="fas fa-file"></i></a>
+			</b-tooltip>
 			<div class="navbar-item has-dropdown is-hoverable">
-				<a class="navbar-link">Data</a>
+				<a class="navbar-item navbar-toolbar-item"><i class="fas fa-folder-open"></i></a>
 				<div class="navbar-dropdown">
-					<a class="navbar-item" @click="runAll"><i class="fas fa-play-circle"></i> Run All</a>
+					<template v-if="savedScripts.length > 0">
+						<a v-for="saveName in savedScripts" :key="saveName" class="navbar-item" @click.left="loadFromLocalStorage(saveName)" @click.middle="deleteFromLocalStorage(saveName)">
+							{{ saveName }}
+						</a>
+					</template>
+					<i v-else class="navbar-item">No saved scripts to load</i>
+					<hr class="navbar-divider">
+					<a class="navbar-item" @click="$refs.fileUpload.click()"><i class="fas fa-upload"></i> Load from disk</a>
+					<a class="navbar-item" @click="showLoadStringDialog = true"><i class="fas fa-file-upload"></i> Load from string</a>
 				</div>
 			</div>
+			<b-tooltip label="Save" position="is-bottom">
+				<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="startSave"><i class="fas fa-save"></i></a>
+			</b-tooltip>
+			<b-tooltip label="Share" position="is-bottom">
+				<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="doSave('clipboard', '')"><i class="fas fa-share-alt"></i></a>
+			</b-tooltip>
+			<b-tooltip label="Run All" position="is-bottom">
+				<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="runAll"><i class="fas fa-play-circle"></i></a>
+			</b-tooltip>
 		</nav>
+
+		<input type="file" ref="fileUpload" @change="loadFromDisk">
+		<b-modal :active.sync="showLoadStringDialog" has-modal-card>
+			<load-string-dialog @load="loadFromString"></load-string-dialog>
+		</b-modal>
+		<b-modal :active.sync="showSaveDialog" has-modal-card>
+			<save-dialog @save="doSave"></save-dialog>
+		</b-modal>
 
 		<div class="main-grid">
 			<div class="col">
@@ -62,19 +90,36 @@
 
 	//@ts-ignore No declaration file
 	import Split from 'split-grid';
+	import { saveAs } from 'file-saver';
+	import * as clipboard from 'clipboard-polyfill';
 
 	import { RootData } from './types';
+	import { ToolInst } from './tools';
+	import toolGroups from './tools/groups';
+
+	import LoadStringDialog from './components/load-string-dialog.vue';
+	import SaveDialog from './components/save-dialog.vue';
 	import ToolList from './components/tool-list.vue';
 	import PropertyView from './components/property-view.vue';
-	import DataFlowCanvas from './components/data-flow-canvas.vue';
 	import OutputView from './tools/output-view.vue';
+	import DataFlowCanvas from './components/data-flow-canvas.vue';
 	export default Vue.extend({
-		components: { ToolList, PropertyView, DataFlowCanvas, OutputView },
+		components: { LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, DataFlowCanvas },
 		computed: {
 			rootData(): RootData {
 				//@ts-ignore
 				return this.$root;
 			},
+			anyTools(): boolean {
+				return this.rootData.toolManager.tools.length > 0;
+			},
+		},
+		data() {
+			return {
+				showLoadStringDialog: false,
+				showSaveDialog: false,
+				savedScripts: [] as string[],
+			};
 		},
 		mounted() {
 			Split({
@@ -102,10 +147,164 @@
 					}
 				},
 			});
+
+			this.savedScripts = this.findSavedNames();
+
+			const onHashChange = () => {
+				if(location.hash.length > 1) {
+					this.loadFromString(location.hash.substring(1));
+					location.hash = '';
+				}
+			};
+			window.addEventListener('hashchange', onHashChange);
+			onHashChange();
 		},
 		methods: {
+			findSavedNames(): string[] {
+				const savedNames: string[] = [];
+				for(const k of Object.keys(localStorage)) {
+					if(k.startsWith('savedTool.')) {
+						savedNames.push(k.replace(/^savedTool\./, ''));
+					}
+				}
+				return savedNames.sort();
+			},
+
+			clear() {
+				const old = [...this.rootData.toolManager.tools];
+				this.rootData.toolManager.tools = [];
+				this.rootData.selectedTool = undefined;
+				this.$snackbar.open({
+					message: 'Tools cleared',
+					type: 'is-info',
+					position: 'is-top',
+					duration: 5000,
+					actionText: 'Undo',
+					onAction: () => { this.rootData.toolManager.tools = old; this.rootData.selectedTool = undefined; },
+				});
+			},
+
+			loadFromDisk(e: Event) {
+				const input = e.target as HTMLInputElement;
+				if(input.files && input.files[0]) {
+					const reader = new FileReader();
+					reader.onload = () => {
+						this.loadFromString(reader.result as string);
+					};
+					reader.readAsText(input.files[0]);
+				}
+				input.value = '';
+			},
+
+			loadFromLocalStorage(name: string) {
+				const data = localStorage.getItem(`savedTool.${name}`);
+				if(data === null) {
+					throw new Error(`Bad local storage save name: ${name}`);
+				}
+				this.loadFromString(data);
+			},
+
+			deleteFromLocalStorage(name: string) {
+				const key = `savedTool.${name}`;
+				const data = localStorage.getItem(key);
+				if(data === null) {
+					throw new Error(`Bad local storage save name: ${name}`);
+				}
+				localStorage.removeItem(key);
+				this.savedScripts = this.findSavedNames();
+				this.$snackbar.open({
+					message: `Save removed: ${name}`,
+					type: 'is-info',
+					position: 'is-top',
+					duration: 5000,
+					actionText: 'Undo',
+					onAction: () => { localStorage.setItem(key, data); this.savedScripts = this.findSavedNames(); },
+				});
+			},
+
+			loadFromString(data: string) {
+				const old = [...this.rootData.toolManager.tools];
+				try {
+					this.rootData.toolManager.deserialize(data, toolGroups.map(group => group.tools).flat());
+					this.rootData.selectedTool = undefined;
+					this.$snackbar.open({
+						message: 'Tools loaded',
+						type: 'is-info',
+						position: 'is-top',
+						duration: 5000,
+						actionText: 'Undo',
+						onAction: () => { this.rootData.toolManager.tools = old; this.rootData.selectedTool = undefined; },
+					});
+				} catch(e) {
+					console.error(e);
+					this.$snackbar.open({
+						message: `Failed to load: ${e.message}`,
+						type: 'is-danger',
+						position: 'is-top',
+						queue: false,
+					});
+				}
+			},
+
+			showNoToolsWarning() {
+				this.$snackbar.open({
+					message: "Script is currently empty",
+					type: 'is-warning',
+					position: 'is-top',
+				});
+			},
+
+			startSave() {
+				if(!this.anyTools) {
+					return this.showNoToolsWarning();
+				}
+				this.showSaveDialog = true;
+			},
+
+			doSave(target: 'browser' | 'disk' | 'clipboard', name: string) {
+				if(!this.anyTools) {
+					return this.showNoToolsWarning();
+				}
+				// Anti-pattern ahoy
+				switch(target) {
+					case 'browser':
+						localStorage.setItem(`savedTool.${name}`, this.rootData.toolManager.serialize('compact'));
+						this.savedScripts = this.findSavedNames();
+						this.$snackbar.open({
+							message: "Script saved",
+							type: 'is-info',
+							position: 'is-top',
+						});
+						break;
+					case 'disk':
+						saveAs(new Blob([ this.rootData.toolManager.serialize('friendly') ], { type: 'text/plain' }), `${name}.ninja`);
+						break;
+					case 'clipboard':
+						clipboard.writeText(window.location.href.split('#')[0] + '#' + this.rootData.toolManager.serialize('base64'))
+							.then(() => this.$snackbar.open({
+								message: "Link copied to clipboard",
+								type: 'is-info',
+								position: 'is-top',
+							}))
+							.catch(e => this.$snackbar.open({
+								message: `Failed to write to clipboard (${e})`,
+								type: 'is-danger',
+								position: 'is-top',
+							}));
+						break;
+				}
+			},
+
 			runAll() {
+				if(!this.anyTools) {
+					return this.showNoToolsWarning();
+				}
 				this.rootData.toolManager.updateData();
+				this.$snackbar.open({
+					message: 'Manually rerunning all tools',
+					type: 'is-info',
+					position: 'is-top',
+				});
 			},
 		},
 	});
@@ -153,22 +352,25 @@ $colors: (
 				margin-right: 5px;
 			}
 		}
-		.navbar-item {
+		.navbar-toolbar-item {
+			&.disabled {
+				cursor: not-allowed;
+			}
 			i {
-				margin-right: 5px;
-			}
-
-			.navbar-link {
 				color: #fff;
-				&::after {
-					border-color: #bf2a48;
-				}
 			}
-
-			&:hover .navbar-link {
-				background-color: #801c30 !important;
+			&:hover i {
+				color: #ff3860;
 			}
 		}
+		.navbar-dropdown .navbar-item i {
+			width: 14px;
+			margin-right: 5px;
+		}
+	}
+
+	.app > input[type=file] {
+		display: none;
 	}
 
 	@gutter-size: 3px;
@@ -189,36 +391,36 @@ $colors: (
 			padding: 10px;
 			background-color: lighten(#363636, 15%);
 		}
-	}
 
-	.center-grid {
-		display: grid;
-		grid-template-rows: 3fr @gutter-size 2fr;
-	}
+		.center-grid {
+			display: grid;
+			grid-template-rows: 3fr @gutter-size 2fr;
+		}
 
-	.gutter-h, .gutter-v {
-		background-color: #aaa;
-	}
+		.gutter-h, .gutter-v {
+			background-color: #aaa;
+		}
 
-	.gutter-h {
-		cursor: col-resize;
-	}
+		.gutter-h {
+			cursor: col-resize;
+		}
 
-	.gutter-v {
-		cursor: row-resize;
-	}
+		.gutter-v {
+			cursor: row-resize;
+		}
 
-	.field label {
-		color: #fff;
-	}
+		.field label {
+			color: #fff;
+		}
 
-	.scroll {
-		overflow-y: auto;
-		> h1 {
-			position: sticky;
-			top: 0;
-			left: 0;
-			z-index: 2;
+		.scroll {
+			overflow-y: auto;
+			> h1 {
+				position: sticky;
+				top: 0;
+				left: 0;
+				z-index: 2;
+			}
 		}
 	}
 </style>
