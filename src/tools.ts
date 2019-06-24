@@ -109,7 +109,7 @@ function convertToInputType(val: string | boolean | number, input: Input): strin
 	}
 }
 
-export enum ToolState { stale, running, good, failed, cycle }
+export enum ToolState { stale = 'stale', running = 'running', good = 'good', failed = 'failed', cycle = 'cycle' }
 
 export abstract class ToolInst {
 	private _name: string;

@@ -347,11 +347,13 @@
 				this.ctx.shadowColor = '#fff';
 				this.ctx.strokeStyle = '#fff';
 				this.ctx.stroke();
-				const clrs: { [K: number ]: string } = {
+				//TODO Maybe change up these colors
+				const clrs: { [K: string ]: string } = {
 					[ToolState.good]:    '#ff3860',
 					[ToolState.stale]:   '#aaa',
 					[ToolState.running]: '#714dd2',
 					[ToolState.failed]:  '#ffdd57',
+					[ToolState.cycle]:   '#ffa51f',
 				};
 				// 	const grad = this.ctx.createLinearGradient(x, y, x + width, y + height);
 				// 	for(let i = 0; i + .05 <= 1; i += .1) {

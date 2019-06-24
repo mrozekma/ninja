@@ -1,5 +1,5 @@
 <template>
-	<form>
+	<form action="">
 		<div class="modal-card">
 			<header class="modal-card-head">
 				<p class="modal-card-title">Load</p>
