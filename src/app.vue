@@ -6,32 +6,39 @@
 					<i class="fas fa-user-ninja"></i> Ninja
 				</div>
 			</div>
-			<b-tooltip label="New" position="is-bottom">
-				<a class="navbar-item navbar-toolbar-item" @click="clear"><i class="fas fa-file"></i></a>
-			</b-tooltip>
-			<div class="navbar-item has-dropdown is-hoverable">
-				<a class="navbar-item navbar-toolbar-item"><i class="fas fa-folder-open"></i></a>
-				<div class="navbar-dropdown">
-					<template v-if="savedScripts.length > 0">
-						<a v-for="saveName in savedScripts" :key="saveName" class="navbar-item" @click.left="loadFromLocalStorage(saveName)" @click.middle="deleteFromLocalStorage(saveName)">
-							{{ saveName }}
-						</a>
-					</template>
-					<i v-else class="navbar-item">No saved scripts to load</i>
-					<hr class="navbar-divider">
-					<a class="navbar-item" @click="$refs.fileUpload.click()"><i class="fas fa-upload"></i> Load from disk</a>
-					<a class="navbar-item" @click="showLoadStringDialog = true"><i class="fas fa-file-upload"></i> Load from string</a>
+			<div class="navbar-start">
+				<b-tooltip label="New" position="is-bottom">
+					<a class="navbar-item navbar-toolbar-item" @click="clear"><i class="fas fa-file"></i></a>
+				</b-tooltip>
+				<div class="navbar-item has-dropdown is-hoverable">
+					<a class="navbar-item navbar-toolbar-item"><i class="fas fa-folder-open"></i></a>
+					<div class="navbar-dropdown">
+						<template v-if="savedScripts.length > 0">
+							<a v-for="saveName in savedScripts" :key="saveName" class="navbar-item" @click.left="loadFromLocalStorage(saveName)" @click.middle="deleteFromLocalStorage(saveName)">
+								{{ saveName }}
+							</a>
+						</template>
+						<i v-else class="navbar-item">No saved scripts to load</i>
+						<hr class="navbar-divider">
+						<a class="navbar-item" @click="$refs.fileUpload.click()"><i class="fas fa-upload"></i> Load from disk</a>
+						<a class="navbar-item" @click="showLoadStringDialog = true"><i class="fas fa-file-upload"></i> Load from string</a>
+					</div>
 				</div>
+				<b-tooltip label="Save" position="is-bottom">
+					<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="startSave"><i class="fas fa-save"></i></a>
+				</b-tooltip>
+				<b-tooltip label="Share" position="is-bottom">
+					<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="doSave('clipboard', '')"><i class="fas fa-share-alt"></i></a>
+				</b-tooltip>
+				<b-tooltip label="Run All" position="is-bottom">
+					<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="runAll"><i class="fas fa-play-circle"></i></a>
+				</b-tooltip>
 			</div>
-			<b-tooltip label="Save" position="is-bottom">
-				<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="startSave"><i class="fas fa-save"></i></a>
-			</b-tooltip>
-			<b-tooltip label="Share" position="is-bottom">
-				<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="doSave('clipboard', '')"><i class="fas fa-share-alt"></i></a>
-			</b-tooltip>
-			<b-tooltip label="Run All" position="is-bottom">
-				<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="runAll"><i class="fas fa-play-circle"></i></a>
-			</b-tooltip>
+			<div class="navbar-end">
+				<b-tooltip v-if="errors.length > 0" :label="showErrorsPanel ? 'Hide Errors' : 'Show Errors'" position="is-bottom">
+					<a class="navbar-item navbar-toolbar-item" @click="showErrorsPanel = !showErrorsPanel"><i class="fas fa-exclamation-triangle"></i><span>{{ errors.length }}</span></a>
+				</b-tooltip>
+			</div>
 		</nav>
 
 		<input type="file" ref="fileUpload" @change="loadFromDisk">
@@ -42,37 +49,48 @@
 			<save-dialog @save="doSave"></save-dialog>
 		</b-modal>
 
-		<div class="main-grid">
-			<div class="col">
+		<split-grid direction="column" :gutter-size="3" class="main-grid" @drag-start="data => gridDragStart('main', data.direction, data.track)" @drag-end="data => gridDragEnd('main', data.direction, data.track)">
+			<split-grid-area class="col" size-unit="px" :size-value="300">
 				<h1>Tools</h1>
 				<div class="scroll">
 					<tool-list></tool-list>
 				</div>
-			</div>
-			<div class="gutter-h" ref="gutter1"></div>
-			<div class="col">
-				<div class="center-grid">
-					<div class="col scroll">
+			</split-grid-area>
+			<split-grid-gutter/>
+			<split-grid-area class="col" size-unit="fr" :size-value="1">
+				<split-grid direction="row" :gutter-size="3" class="center-grid"  @drag-start="data => gridDragStart('center', data.direction, data.track)" @drag-end="data => gridDragEnd('center', data.direction, data.track)">
+					<split-grid-area class="col scroll" size-unit="fr" :size-value="3">
 						<h1>Properties</h1>
-						<div class="">
+						<div>
 							<property-view></property-view>
 						</div>
-					</div>
-					<div class="gutter-v" ref="gutter3"></div>
-					<div class="col scroll">
+					</split-grid-area>
+					<split-grid-gutter/>
+					<split-grid-area class="col scroll" size-unit="fr" :size-value="2">
 						<h1>Outputs</h1>
-						<div class="">
+						<div>
 							<output-view></output-view>
 						</div>
-					</div>
-				</div>
-			</div>
-			<div class="gutter-h" ref="gutter2"></div>
-			<div class="col">
-				<h1>Routing</h1>
-				<data-flow-canvas ref="dfcanvas"></data-flow-canvas>
-			</div>
-		</div>
+					</split-grid-area>
+				</split-grid>
+			</split-grid-area>
+			<split-grid-gutter/>
+			<split-grid-area class="col" size-unit="fr" :size-value="1">
+				<split-grid direction="row" :gutter-size="3" class="right-grid" @drag-start="data => gridDragStart('right', data.direction, data.track)" @drag-end="data => gridDragEnd('right', data.direction, data.track)">
+					<split-grid-area class="col" size-unit="fr" :size-value="1">
+						<h1>Routing</h1>
+						<data-flow-canvas ref="dfcanvas"></data-flow-canvas>
+					</split-grid-area>
+					<split-grid-gutter :show="showErrorsPanel"/>
+					<split-grid-area :show="showErrorsPanel" class="col scroll" size-unit="px" :size-value="250">
+						<h1>Errors</h1>
+						<div>
+							TODO
+						</div>
+					</split-grid-area>
+				</split-grid>
+			</split-grid-area>
+		</split-grid>
 	</div>
 </template>
 
@@ -83,20 +101,23 @@
 	// import 'buefy/dist/buefy.css';
 	Vue.use(Buefy, {
 		defaultIconPack: 'fas',
+		// defaultSnackbarDuration: 5000,
+		defaultSnackbarPosition: 'is-top',
+		defaultNoticeQueue: false,
 	});
 	import 'typeface-montserrat';
 	import '@fortawesome/fontawesome-free';
 	import '@fortawesome/fontawesome-free/css/all.css';
 
-	//@ts-ignore No declaration file
-	import Split from 'split-grid';
 	import { saveAs } from 'file-saver';
 	import * as clipboard from 'clipboard-polyfill';
 
 	import { RootData } from './types';
-	import { ToolInst } from './tools';
+	import { ToolInst, ToolError } from './tools';
 	import toolGroups from './tools/groups';
 
+	//@ts-ignore No declaration file
+	import { SplitGrid, SplitGridArea, SplitGridGutter } from 'vue-split-grid';
 	import LoadStringDialog from './components/load-string-dialog.vue';
 	import SaveDialog from './components/save-dialog.vue';
 	import ToolList from './components/tool-list.vue';
@@ -104,7 +125,10 @@
 	import OutputView from './tools/output-view.vue';
 	import DataFlowCanvas from './components/data-flow-canvas.vue';
 	export default Vue.extend({
-		components: { LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, DataFlowCanvas },
+		components: {
+			SplitGrid, SplitGridArea, SplitGridGutter,
+			LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, DataFlowCanvas,
+		},
 		computed: {
 			rootData(): RootData {
 				//@ts-ignore
@@ -113,41 +137,28 @@
 			anyTools(): boolean {
 				return this.rootData.toolManager.tools.length > 0;
 			},
+			errors(): ToolError[] {
+				return Array.from(this.rootData.toolManager.iterErrors());
+			},
 		},
 		data() {
 			return {
+				showErrorsPanel: false,
 				showLoadStringDialog: false,
 				showSaveDialog: false,
 				savedScripts: [] as string[],
 			};
 		},
+		watch: {
+			async showErrorsPanel(val: boolean) {
+				//@ts-ignore
+				this.$refs.dfcanvas.shrink();
+				await this.$nextTick();
+				//@ts-ignore
+				this.$refs.dfcanvas.grow();
+			},
+		},
 		mounted() {
-			Split({
-				columnGutters: [{
-					track: 1,
-					element: this.$refs.gutter1,
-				}, {
-					track: 3,
-					element: this.$refs.gutter2,
-				}],
-				rowGutters: [{
-					track: 1,
-					element: this.$refs.gutter3,
-				}],
-				onDragStart: (direction: 'row' | 'column', track: number) => {
-					if(direction == 'column' && track == 3) {
-						//@ts-ignore
-						this.$refs.dfcanvas.shrink();
-					}
-				},
-				onDragEnd: (direction: 'row' | 'column', track: number) => {
-					if(direction == 'column' && track == 3) {
-						//@ts-ignore
-						this.$refs.dfcanvas.grow();
-					}
-				},
-			});
-
 			this.savedScripts = this.findSavedNames();
 
 			const onHashChange = () => {
@@ -177,7 +188,6 @@
 				this.$snackbar.open({
 					message: 'Tools cleared',
 					type: 'is-info',
-					position: 'is-top',
 					duration: 5000,
 					actionText: 'Undo',
 					onAction: () => { this.rootData.toolManager.tools = old; this.rootData.selectedTool = undefined; },
@@ -215,7 +225,6 @@
 				this.$snackbar.open({
 					message: `Save removed: ${name}`,
 					type: 'is-info',
-					position: 'is-top',
 					duration: 5000,
 					actionText: 'Undo',
 					onAction: () => { localStorage.setItem(key, data); this.savedScripts = this.findSavedNames(); },
@@ -230,7 +239,6 @@
 					this.$snackbar.open({
 						message: 'Tools loaded',
 						type: 'is-info',
-						position: 'is-top',
 						duration: 5000,
 						actionText: 'Undo',
 						onAction: () => { this.rootData.toolManager.tools = old; this.rootData.selectedTool = undefined; },
@@ -240,8 +248,6 @@
 					this.$snackbar.open({
 						message: `Failed to load: ${e.message}`,
 						type: 'is-danger',
-						position: 'is-top',
-						queue: false,
 					});
 				}
 			},
@@ -250,7 +256,6 @@
 				this.$snackbar.open({
 					message: "Script is currently empty",
 					type: 'is-warning',
-					position: 'is-top',
 				});
 			},
 
@@ -306,6 +311,21 @@
 					position: 'is-top',
 				});
 			},
+
+			gridDragStart(grid: 'main' | 'center' | 'right', direction: 'row' | 'column', track: number) {
+				// The data flow canvas will prevent its container cell from shrinking, so if dragging a gutter next to it, shrink it temporarily
+				if((grid == 'main' && track == 3) || (grid == 'right' && track == 1)) {
+					//@ts-ignore
+					this.$refs.dfcanvas.shrink();
+				}
+			},
+
+			gridDragEnd(grid: 'main' | 'center' | 'right', direction: 'row' | 'column', track: number) {
+				if((grid == 'main' && track == 3) || (grid == 'right' && track == 1)) {
+					//@ts-ignore
+					this.$refs.dfcanvas.grow();
+				}
+			},
 		},
 	});
 </script>
@@ -352,12 +372,16 @@ $colors: (
 				margin-right: 5px;
 			}
 		}
+		.navbar-end {
+			margin-right: 10px;
+		}
 		.navbar-toolbar-item {
+			color: #fff;
 			&.disabled {
 				cursor: not-allowed;
 			}
-			i {
-				color: #fff;
+			i ~ span {
+				margin-left: 5px;
 			}
 			&:hover i {
 				color: #ff3860;
@@ -373,15 +397,11 @@ $colors: (
 		display: none;
 	}
 
-	@gutter-size: 3px;
-
-	.main-grid, .center-grid {
+	.main-grid, .center-grid, .right-grid {
 		height: calc(100vh - 52px);
 	}
 
 	.main-grid {
-		display: grid;
-		grid-template-columns: 300px @gutter-size 1fr @gutter-size 1fr;
 		color: #fff;
 
 		h1 {
@@ -390,23 +410,6 @@ $colors: (
 			border-width: 1px 0;
 			padding: 10px;
 			background-color: lighten(#363636, 15%);
-		}
-
-		.center-grid {
-			display: grid;
-			grid-template-rows: 3fr @gutter-size 2fr;
-		}
-
-		.gutter-h, .gutter-v {
-			background-color: #aaa;
-		}
-
-		.gutter-h {
-			cursor: col-resize;
-		}
-
-		.gutter-v {
-			cursor: row-resize;
 		}
 
 		.field label {

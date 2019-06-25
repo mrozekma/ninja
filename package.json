@@ -22,7 +22,8 @@
 		"sass-loader": "^7.1.0",
 		"split-grid": "^1.0.9",
 		"typeface-montserrat": "^0.0.54",
-		"vue": "^2.6.10"
+		"vue": "^2.6.10",
+		"vue-split-grid": "^0.8.0"
 	},
 	"devDependencies": {
 		"@types/file-saver": "^2.0.1",

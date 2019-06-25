@@ -56,6 +56,12 @@ export type Input = Output & {
 	connection: RemoteConnection | undefined; // This is mandatory (i.e. not "connection?: RemoteConnection") so that Vue has a chance to attach a setter
 }
 
+export interface ToolError {
+	tool: ToolInst;
+	input?: Input;
+	error: string;
+}
+
 function convertToString(val: string | boolean | number): string {
 	switch(typeof val) {
 		case 'string': return val;
@@ -115,11 +121,13 @@ export abstract class ToolInst {
 	private _name: string;
 	private _loc: Point;
 	private _state: ToolState;
+	private _error: string | undefined;
 
 	constructor(public readonly def: ToolDef, name: string) {
 		this._name = name;
 		this._loc = {x: 10, y: 10};
 		this._state = ToolState.stale;
+		this._error = undefined;
 	}
 
 	get name(): string { return this._name; }
@@ -130,6 +138,8 @@ export abstract class ToolInst {
 
 	get state(): ToolState { return this._state; }
 	set state(state: ToolState) { this._state = state; }
+
+	get error(): string | undefined { return this._error; }
 
 	abstract get inputs(): Input[];
 	abstract get outputs(): Output[];
@@ -156,13 +166,19 @@ export abstract class ToolInst {
 	}
 
 	async run(): Promise<void> {
+		const badInputs = this.inputs.filter(input => input.connection && input.connection.error !== undefined);
+		if(badInputs.length > 0) {
+			this.state = ToolState.failed;
+			this._error = `Unresolved ${(badInputs.length == 1) ? 'input' : 'inputs'}: ${badInputs.join(', ')}`;
+			return;
+		}
 		this.state = ToolState.running;
 		try {
 			await this.runImpl();
 			this.state = ToolState.good;
 		} catch(e) {
 			this.state = ToolState.failed;
-			throw e;
+			this._error = e.message;
 		}
 	}
 
@@ -300,7 +316,29 @@ export class ToolManager {
 		} catch(e) {
 			input.connection!.error = `Unable to convert ${output.type} ${output.tool.name}.${output.name} to ${input.type} ${input.tool.name}.${input.name}: ${e.message}`;
 		}
-}
+	}
+
+	*iterErrors(): Iterable<ToolError> {
+		for(const tool of this.tools) {
+			switch(tool.state) {
+				case ToolState.good:
+				case ToolState.running:
+				case ToolState.stale:
+					break;
+				case ToolState.cycle:
+					yield { tool, error: "Part of a circular dependency" };
+					break;
+				case ToolState.failed:
+					yield { tool, error: tool.error || "Unspecified run failure" };
+					for(const input of tool.inputs) {
+						if(input.connection && input.connection.error) {
+							yield { tool, input, error: input.connection.error };
+						}
+					}
+					break;
+			}
+		}
+	}
 
 	private async updateSetRecursively<T>(set: Set<T>, updateFn: (set: Set<T>) => void | Promise<void>) {
 		let size = -1;
@@ -327,6 +365,9 @@ export class ToolManager {
 				return [change as ToolInst];
 			}
 		})());
+		for(const tool of outOfDate) {
+			tool.state = ToolState.stale;
+		}
 		try {
 			const connections = new MapWithDefault<Output, Set<Input>>(() => new Set<Input>());
 			await this.updateSetRecursively(outOfDate, set => {
@@ -358,7 +399,7 @@ export class ToolManager {
 					if(myId != this.updateId) {
 						throw 'superceded';
 					}
-					if(tool.inputs.every(input => input.connection === undefined || input.connection.upToDate)) {
+					if(tool.inputs.every(input => input.connection === undefined || input.connection.upToDate || input.connection.error)) {
 						set.delete(tool);
 						promises.push(tool.run().then(() => {
 							console.log(`  Finished with ${tool.name}`);

@@ -123,7 +123,6 @@
 		mounted() {
 			this.canvas = this.$refs.canvas as HTMLCanvasElement;
 			this.ctx = this.canvas.getContext('2d')!;
-			this.setupCanvas();
 
 			window.addEventListener('resize', () => this.grow());
 
@@ -131,6 +130,8 @@
 			for(const fn of [ this.setupCanvas, this.draw ]) {
 				this.$watch(() => { fn() }, () => fn());
 			}
+			// Shrink until the parent has laid out its grid, to avoid taking up the maximum amount of space
+			this.shrink();
 		},
 		methods: {
 			setupCanvas() {
