@@ -39,6 +39,7 @@ export type Output = {
 	val: string;
 } | {
 	type: 'boolean';
+	labels?: [ string, string ];
 	val: boolean;
 } | {
 	type: 'number';
@@ -279,7 +280,7 @@ export class ToolManager {
 				return def.name;
 			}
 			for(let i = 2; ; i++) {
-				const name = def.name + i;
+				const name = `${def.name}-${i}`;
 				if(!names.has(name)) {
 					return name;
 				}
@@ -337,6 +338,7 @@ export class ToolManager {
 		this.updateData(input);
 	}
 
+	//TODO It's weird that setInput delegates to the input but setInputIndirect mutates input.val itself
 	setInputIndirect(input: Input) {
 		if(input.connection === undefined) {
 			throw new Error(`Input ${input.tool.name}.${input.name} is unbound`);

@@ -21,13 +21,7 @@
 			<b-message v-if="input.connection && input.connection.error" type="is-danger">
 				{{ input.connection.error }}
 			</b-message>
-			<b-input v-else-if="input.type == 'string'" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-input>
-			<b-input v-else-if="input.type == 'text'" type="textarea" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-input>
-			<b-switch v-else-if="input.type == 'boolean'" :value="input.val" @input="set(input, $event)" :disabled="input.connection !== undefined">{{ (input.connection && !input.connection.upToDate) ? "Loading..." : input.val ? "Enabled" : "Disabled" }}</b-switch>
-			<b-numberinput v-else-if="input.type == 'number'" :min="input.min" :max="input.max" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined"></b-numberinput>
-			<b-select v-else-if="input.type == 'enum'" :value="input.val" @input="set(input, $event)" :loading="!!(input.connection && !input.connection.upToDate)" :disabled="input.connection !== undefined">
-				<option v-for="option in input.options" :value="option">{{ option }}</option>
-			</b-select>
+			<tool-input v-else :input="input"></tool-input>
 		</b-field>
 	</div>
 </template>
@@ -37,7 +31,9 @@
 	import { Input } from '@/tools';
 
 	import Vue from 'vue';
+	import ToolInputComponent from '@/components/tool-input.vue';
 	export default Vue.extend({
+		components: { ToolInput: ToolInputComponent },
 		computed: {
 			rootData(): RootData {
 				//@ts-ignore
@@ -49,9 +45,6 @@
 			},
 		},
 		methods: {
-			set(input: Input, value: any) {
-				this.rootData.toolManager.setInput(input, value);
-			},
 			disconnect(input: Input) {
 				this.rootData.toolManager.disconnect(input);
 			},

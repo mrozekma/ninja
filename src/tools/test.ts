@@ -93,8 +93,24 @@ class SleepTool extends ToolInst {
 	}
 }
 
+class LipsumTool extends ToolInst {
+	private out: Output = {
+		tool: this,
+		name: 'out',
+		description: 'Output',
+		type: 'text',
+		val: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed nec porta augue, at vestibulum mauris. Curabitur dapibus auctor eros, sed auctor justo suscipit eget. Pellentesque tellus dolor, vehicula ut urna ut, viverra ultrices lectus. Praesent convallis diam quis augue consequat, eu volutpat justo posuere. Donec eu ligula arcu. Morbi in neque in nulla placerat rutrum. Vestibulum eu mauris vel tortor finibus molestie quis quis dolor. Donec bibendum, tellus eget aliquet posuere, diam diam egestas augue, vel vehicula mauris magna nec nisl. Aenean ipsum ex, interdum eget risus nec, commodo dictum nisl. Quisque maximus, metus quis blandit pulvinar, massa nisi pretium libero, sed gravida turpis ligula non arcu. Ut fringilla tempus elementum. Donec sed dapibus nisl. Phasellus maximus, magna tincidunt efficitur sollicitudin, lorem odio aliquet tellus, in elementum tortor lectus ac nisi. Integer id libero fringilla, vestibulum sem et, ultricies augue. Pellentesque lacinia non neque non consequat.",
+	};
+
+	readonly inputs: Input[] = [];
+	readonly outputs: Output[] = [ this.out ];
+
+	async runImpl() {}
+}
+
 export default [
 	makeDef(AddTool, 'Add', 'Add two numbers'),
 	makeDef(FormTestTool, 'Form test', 'Form test tool'),
 	makeDef(SleepTool, 'Sleep', 'Sleep for set amount of time'),
+	makeDef(LipsumTool, 'Lipsum', 'Emit static lorem ipsum text'),
 ];
