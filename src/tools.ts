@@ -29,31 +29,40 @@ export interface RemoteConnection {
 	error: string | undefined;
 }
 
-//TODO Generic here?
-export type Output = {
+interface OutputCommon {
 	name: string;
 	description: string;
 	tool: ToolInst;
-} & ({
+}
+type OutputStringText = OutputCommon & {
 	type: 'string' | 'text';
 	val: string;
-} | {
+}
+type OutputBoolean = OutputCommon & {
 	type: 'boolean';
-	labels?: [ string, string ];
+	labels?: [ string, string ]; // [ enabled, disabled ]
 	val: boolean;
-} | {
+}
+type OutputNumber = OutputCommon & {
 	type: 'number';
 	min?: number;
 	max?: number;
 	val: number;
-} | {
+}
+type OutputEnum = OutputCommon & {
 	type: 'enum';
 	options: string[];
 	val: string;
-})
+}
+
+export type Output<T = string | boolean | number> =
+	T extends string ? OutputStringText | OutputEnum :
+	T extends boolean ? OutputBoolean :
+	T extends number ? OutputNumber :
+	never
 
 // An input is just like an output but with an extra field to track if it's connected to another tool's output
-export type Input = Output & {
+export type Input<T = string | boolean | number> = Output<T> & {
 	connection: RemoteConnection | undefined; // This is mandatory (i.e. not "connection?: RemoteConnection") so that Vue has a chance to attach a setter
 }
 

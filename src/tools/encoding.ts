@@ -3,7 +3,7 @@ import { makeDef, ToolInst, Input, Output, ToolDef } from '@/tools';
 import { Base64 } from 'js-base64';
 
 class Base64Tool extends ToolInst {
-	private inp: Input = {
+	private inp: Input<string> = {
 		tool: this,
 		name: 'in',
 		description: '',
@@ -12,7 +12,7 @@ class Base64Tool extends ToolInst {
 		connection: undefined,
 	};
 
-	private dir: Input = new Proxy({
+	private dir: Input<boolean> = new Proxy({
 		tool: this,
 		name: 'dir',
 		description: 'Direction',
@@ -32,7 +32,7 @@ class Base64Tool extends ToolInst {
 		},
 	});
 
-	private out: Output = {
+	private out: Output<string> = {
 		tool: this,
 		name: 'out',
 		description: '',
@@ -49,14 +49,14 @@ class Base64Tool extends ToolInst {
 	}
 
 	private updateDescriptions() {
-		const dir = this.dir.val as boolean;
+		const dir = this.dir.val;
 		this.inp.description = dir ? "Plaintext" : "Encoded";
 		this.out.description = dir ? "Encoded" : "Plaintext";
 	}
 
 	async runImpl() {
-		const fn = (this.dir.val == 'Encode') ? Base64.encode : Base64.decode;
-		this.out.val = fn(this.inp.val as string);
+		const fn = this.dir.val ? Base64.encode : Base64.decode;
+		this.out.val = fn(this.inp.val);
 	}
 }
 
