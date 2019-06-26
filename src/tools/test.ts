@@ -1,4 +1,52 @@
-import { makeDef, ToolInst, Input, Output } from '@/tools';
+import { makeDef, ToolInst, Input, Output, convertToInputType, ToolDef } from '@/tools';
+
+//TODO Pull the concept of a generic input/output with type selector into an abstract class
+class ConstantTool extends ToolInst {
+	private inp: Input = {
+		tool: this,
+		name: 'inp',
+		description: 'Input',
+		type: 'number',
+		val: 0,
+		connection: undefined,
+	};
+	private type: Input = new Proxy({
+		tool: this,
+		name: 'type',
+		description: "Input/output type",
+		type: 'enum',
+		val: 'number',
+		options: [ 'string', 'number', 'boolean' ],
+		connection: undefined,
+	}, {
+		set: (inp, k, v) => {
+			const rtn = Reflect.set(inp, k, v);
+			if(k == 'val') {
+				this.updateTypes();
+			}
+			return rtn;
+		},
+	});
+	private out: Output = {
+		tool: this,
+		name: 'out',
+		description: 'Output',
+		type: 'number',
+		val: 0,
+	};
+
+	readonly inputs: Input[] = [ this.type, this.inp ];
+	readonly outputs: Output[] = [ this.out ];
+
+	private updateTypes() {
+		this.inp.type = this.out.type = this.type.val as 'string' | 'number' | 'boolean';
+		this.inp.val = convertToInputType(this.inp.val, this.inp);
+	}
+
+	async runImpl() {
+		this.out.val = this.inp.val;
+	}
+}
 
 class AddTool extends ToolInst {
 	private fst: Input<number> = {
@@ -56,16 +104,7 @@ class FormTestTool extends ToolInst {
 	}
 }
 
-class SleepTool extends ToolInst {
-	//TODO Generics so inp.type could match out.type? Doubt this comes up in real tools
-	private inp: Input<number> = {
-		tool: this,
-		name: 'inp',
-		description: 'Input',
-		type: 'number',
-		val: 0,
-		connection: undefined,
-	};
+class SleepTool extends ConstantTool {
 	private secs: Input<number> = {
 		tool: this,
 		name: 'secs',
@@ -74,20 +113,15 @@ class SleepTool extends ToolInst {
 		val: 3,
 		connection: undefined,
 	};
-	private out: Output<number> = {
-		tool: this,
-		name: 'out',
-		description: 'Output',
-		type: 'number',
-		val: 0,
-	};
 
-	readonly inputs: Input[] = [ this.inp, this.secs ];
-	readonly outputs: Output[] = [ this.out ];
+	constructor(def: ToolDef, name: string) {
+		super(def, name);
+		this.inputs.push(this.secs);
+	}
 
 	runImpl(): Promise<void> {
-		return new Promise(resolve => setTimeout(() => {
-			this.out.val = this.inp.val;
+		return new Promise(resolve => setTimeout(async () => {
+			await super.runImpl();
 			resolve();
 		}, this.secs.val * 1000));
 	}
@@ -109,6 +143,7 @@ class LipsumTool extends ToolInst {
 }
 
 export default [
+	makeDef(ConstantTool, 'Constant', 'Emit/passthrough a constant'),
 	makeDef(AddTool, 'Add', 'Add two numbers'),
 	makeDef(FormTestTool, 'Form test', 'Form test tool'),
 	makeDef(SleepTool, 'Sleep', 'Sleep for set amount of time'),

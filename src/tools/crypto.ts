@@ -1,8 +1,9 @@
 import { makeDef, ToolInst, Input, Output, ToolDef } from '@/tools';
 
-import { Base64 } from 'js-base64';
+//@ts-ignore No declaration file
+import { encrypt as caesarShift, decrypt as caesarUnshift } from 'caesar-shift';
 
-class Base64Tool extends ToolInst {
+class CaesarTool extends ToolInst {
 	private inp: Input<string> = {
 		tool: this,
 		name: 'in',
@@ -17,7 +18,7 @@ class Base64Tool extends ToolInst {
 		name: 'dir',
 		description: 'Direction',
 		type: 'boolean',
-		labels: [ 'Encode', 'Decode' ],
+		labels: [ 'Shift', 'Unshift' ],
 		val: true,
 		connection: undefined,
 	}, {
@@ -30,6 +31,17 @@ class Base64Tool extends ToolInst {
 		},
 	});
 
+	private key: Input<number> = {
+		tool: this,
+		name: 'key',
+		description: 'Shift amount',
+		type: 'number',
+		min: 0,
+		max: 25,
+		val: 0,
+		connection: undefined,
+	};
+
 	private out: Output<string> = {
 		tool: this,
 		name: 'out',
@@ -38,7 +50,7 @@ class Base64Tool extends ToolInst {
 		val: '',
 	};
 
-	readonly inputs: Input[] = [ this.inp, this.dir ];
+	readonly inputs: Input[] = [ this.inp, this.dir, this.key ];
 	readonly outputs: Output[] = [ this.out ];
 
 	constructor(def: ToolDef, name: string) {
@@ -48,16 +60,16 @@ class Base64Tool extends ToolInst {
 
 	private updateDescriptions() {
 		const dir = this.dir.val;
-		this.inp.description = dir ? "Plaintext" : "Encoded";
-		this.out.description = dir ? "Encoded" : "Plaintext";
+		this.inp.description = dir ? "Plaintext" : "Ciphertext";
+		this.out.description = dir ? "Ciphertext" : "Plaintext";
 	}
 
 	async runImpl() {
-		const fn = this.dir.val ? Base64.encode : Base64.decode;
-		this.out.val = fn(this.inp.val);
+		const fn = this.dir.val ? caesarShift : caesarUnshift;
+		this.out.val = fn(this.key.val, this.inp.val);
 	}
 }
 
 export default [
-	makeDef(Base64Tool, 'Base64', "Base64 encoder/decoder"),
+	makeDef(CaesarTool, "Caesar shift", "Caesar shift"),
 ];

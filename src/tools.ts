@@ -72,7 +72,7 @@ export interface ToolError {
 	error: string;
 }
 
-function convertToString(val: string | boolean | number): string {
+export function convertToString(val: string | boolean | number): string {
 	switch(typeof val) {
 		case 'string': return val;
 		case 'boolean': return val ? 'true' : 'false';
@@ -80,7 +80,7 @@ function convertToString(val: string | boolean | number): string {
 	}
 }
 
-function convertToBoolean(val: string | boolean | number): boolean {
+export function convertToBoolean(val: string | boolean | number): boolean {
 	switch(typeof val) {
 		case 'string': return ['true', 'yes'].indexOf(val.toLowerCase()) >= 0;
 		case 'boolean': return val;
@@ -88,7 +88,7 @@ function convertToBoolean(val: string | boolean | number): boolean {
 	}
 }
 
-function convertToNumber(val: string | boolean | number): number {
+export function convertToNumber(val: string | boolean | number): number {
 	switch(typeof val) {
 		case 'string':
 			const rtn = parseInt(val, 10);
@@ -101,7 +101,7 @@ function convertToNumber(val: string | boolean | number): number {
 	}
 }
 
-function convertToInputType(val: string | boolean | number, input: Input): string | boolean | number {
+export function convertToInputType(val: string | boolean | number, input: Input): string | boolean | number {
 	switch(input.type) {
 		case 'string':
 		case 'text':
