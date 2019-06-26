@@ -734,6 +734,11 @@
   resolved "https://registry.yarnpkg.com/@types/cli-color/-/cli-color-0.3.29.tgz#c83a71fe02c8c7e1ccec048dd6a2458d1f6c96ea"
   integrity sha1-yDpx/gLIx+HM7ASN1qJFjR9sluo=
 
+"@types/css-font-loading-module@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@types/css-font-loading-module/-/css-font-loading-module-0.0.2.tgz#09f1f1772975777e37851b7b7a4389d97c210add"
+  integrity sha512-zZTq/B1ZcJMepOfBIMEwOZ/g/jpSPUJoxP8zPtPizOKE/Q89SujK1BLYZBg+4LLW3IzJGOI67dbeePy8uPUs+g==
+
 "@types/events@*":
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/@types/events/-/events-3.0.0.tgz#2862f3f58a9a7f7c3e78d79f130dd4d71c25c2a7"

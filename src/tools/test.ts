@@ -49,7 +49,11 @@ class FormTestTool extends ToolInst {
 		{ tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar' },
 	];
 
-	async runImpl() {}
+	async runImpl() {
+		if(this.inputs[0].val === 'break') {
+			throw new Error("Intentional failure");
+		}
+	}
 }
 
 class SleepTool extends ToolInst {

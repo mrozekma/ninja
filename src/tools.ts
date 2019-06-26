@@ -115,7 +115,7 @@ function convertToInputType(val: string | boolean | number, input: Input): strin
 	}
 }
 
-export enum ToolState { stale = 'stale', running = 'running', good = 'good', failed = 'failed', cycle = 'cycle' }
+export enum ToolState { stale = 'stale', running = 'running', good = 'good', badInputs = 'bad-inputs', failed = 'failed', cycle = 'cycle' }
 
 export abstract class ToolInst {
 	private _name: string;
@@ -168,8 +168,8 @@ export abstract class ToolInst {
 	async run(): Promise<void> {
 		const badInputs = this.inputs.filter(input => input.connection && input.connection.error !== undefined);
 		if(badInputs.length > 0) {
-			this.state = ToolState.failed;
-			this._error = `Unresolved ${(badInputs.length == 1) ? 'input' : 'inputs'}: ${badInputs.join(', ')}`;
+			this.state = ToolState.badInputs;
+			this._error = `Unresolved ${(badInputs.length == 1) ? 'input' : 'inputs'}: ${badInputs.map(input => input.name).join(', ')}`;
 			return;
 		}
 		this.state = ToolState.running;
@@ -202,6 +202,38 @@ export abstract class ToolInst {
 				return map;
 			}, {}),
 		};
+	}
+}
+
+class SetWithChangedFlag<T> extends Set<T> {
+	private _changed = false;
+
+	get changed() { return this._changed; }
+	clearFlag() { this._changed = false; }
+
+	add(val: T): this {
+		if(!this.has(val)) {
+			super.add(val);
+			this._changed = true;
+		}
+		return this;
+	}
+
+	delete(val: T): boolean {
+		if(super.delete(val)) {
+			this._changed = true;
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	clear() {
+		const size = this.size;
+		super.clear();
+		if(size > 0) {
+			this._changed = true;
+		}
 	}
 }
 
@@ -330,6 +362,8 @@ export class ToolManager {
 					break;
 				case ToolState.failed:
 					yield { tool, error: tool.error || "Unspecified run failure" };
+					break;
+				case ToolState.badInputs:
 					for(const input of tool.inputs) {
 						if(input.connection && input.connection.error) {
 							yield { tool, input, error: input.connection.error };
@@ -340,12 +374,11 @@ export class ToolManager {
 		}
 	}
 
-	private async updateSetRecursively<T>(set: Set<T>, updateFn: (set: Set<T>) => void | Promise<void>) {
-		let size = -1;
-		while(size != set.size) {
-			size = set.size;
+	private async updateSetRecursively<T>(set: SetWithChangedFlag<T>, updateFn: (set: Set<T>) => void | Promise<void>) {
+		do {
+			set.clearFlag();
 			await updateFn(set);
-		}
+		} while(set.changed);
 	}
 
 	private updateId = 0;
@@ -356,7 +389,7 @@ export class ToolManager {
 		console.log('Update data', myId, change);
 
 		// Find every tool affected by this change
-		const outOfDate = new Set<ToolInst>((() => {
+		const outOfDate = new SetWithChangedFlag<ToolInst>((() => {
 			if(change === undefined) {
 				return this.tools;
 			} else if((change as Input).tool) {
@@ -381,6 +414,7 @@ export class ToolManager {
 							connections.get(input.connection.output).add(input);
 							if(set.has(input.connection.output.tool)) {
 								input.connection.upToDate = false;
+								input.connection.error = undefined;
 								set.add(tool);
 							}
 						}

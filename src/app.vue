@@ -35,6 +35,11 @@
 				</b-tooltip>
 			</div>
 			<div class="navbar-end">
+				<b-tooltip v-if="running" label="Running..." position="is-bottom">
+					<div class="navbar-item navbar-toolbar-item">
+						<div class="spinner"></div>
+					</div>
+				</b-tooltip>
 				<b-tooltip v-if="errors.length > 0" :label="showErrorsPanel ? 'Hide Errors' : 'Show Errors'" position="is-bottom">
 					<a class="navbar-item navbar-toolbar-item" @click="showErrorsPanel = !showErrorsPanel"><i class="fas fa-exclamation-triangle"></i><span>{{ errors.length }}</span></a>
 				</b-tooltip>
@@ -83,9 +88,12 @@
 					</split-grid-area>
 					<split-grid-gutter :show="showErrorsPanel"/>
 					<split-grid-area :show="showErrorsPanel" class="col scroll" size-unit="px" :size-value="250">
-						<h1>Errors</h1>
+						<h1>
+							Errors
+							<i class="fas fa-window-close" @click="showErrorsPanel = false"></i>
+						</h1>
 						<div>
-							TODO
+							<errors-view :errors="errors"></errors-view>
 						</div>
 					</split-grid-area>
 				</split-grid>
@@ -113,7 +121,7 @@
 	import * as clipboard from 'clipboard-polyfill';
 
 	import { RootData } from './types';
-	import { ToolInst, ToolError } from './tools';
+	import { ToolInst, ToolError, ToolState } from './tools';
 	import toolGroups from './tools/groups';
 
 	//@ts-ignore No declaration file
@@ -122,12 +130,13 @@
 	import SaveDialog from './components/save-dialog.vue';
 	import ToolList from './components/tool-list.vue';
 	import PropertyView from './components/property-view.vue';
-	import OutputView from './tools/output-view.vue';
+	import OutputView from './components/output-view.vue';
+	import ErrorsView from './components/errors-view.vue';
 	import DataFlowCanvas from './components/data-flow-canvas.vue';
 	export default Vue.extend({
 		components: {
 			SplitGrid, SplitGridArea, SplitGridGutter,
-			LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, DataFlowCanvas,
+			LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, ErrorsView, DataFlowCanvas,
 		},
 		computed: {
 			rootData(): RootData {
@@ -136,6 +145,9 @@
 			},
 			anyTools(): boolean {
 				return this.rootData.toolManager.tools.length > 0;
+			},
+			running(): boolean {
+				return this.rootData.toolManager.tools.some(tool => tool.state == ToolState.running);
 			},
 			errors(): ToolError[] {
 				return Array.from(this.rootData.toolManager.iterErrors());
@@ -156,6 +168,12 @@
 				await this.$nextTick();
 				//@ts-ignore
 				this.$refs.dfcanvas.grow();
+			},
+			errors(val: ToolError[]) {
+				//TODO Likely don't do this, it closes the panel on every rerun
+				if(val.length == 0) {
+					this.showErrorsPanel = false;
+				}
 			},
 		},
 		mounted() {
@@ -423,7 +441,27 @@ $colors: (
 				top: 0;
 				left: 0;
 				z-index: 2;
+				i {
+					float: right;
+					font-size: 16pt;
+					cursor: pointer;
+				}
 			}
+		}
+	}
+
+	// https://cssfx.dev/
+	div.spinner {
+		border: 3px solid hsla(185, 100%, 62%, 0.2);
+		border-top-color: #fff;
+		border-radius: 50%;
+		width: 24px;
+		height: 24px;
+		animation: spin 1s linear infinite;
+	}
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
 		}
 	}
 </style>

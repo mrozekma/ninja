@@ -73,6 +73,12 @@
 	const FONT = 'Arial';
 	const TOOL_WIDTH = 100, TOOL_HEIGHT = 75, CONNECTOR_RADIUS = 4, CONNECTOR_GAP = 15;
 
+	//@ts-ignore
+	import faFontUrl from '../../node_modules/@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2';
+	const fontAwesomePromise = new FontFace('FontAwesome', `url('${faFontUrl}')`).load().then(font => {
+		document.fonts.add(font);
+	});
+
 	import Vue, { PropType } from 'vue';
 	export default Vue.extend({
 		computed: {
@@ -132,6 +138,8 @@
 			}
 			// Shrink until the parent has laid out its grid, to avoid taking up the maximum amount of space
 			this.shrink();
+			// Re-draw after FontAwesome is loaded
+			fontAwesomePromise.then(() => this.draw());
 		},
 		methods: {
 			setupCanvas() {
@@ -209,11 +217,6 @@
 				this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 				this.ctx.restore();
 
-				// let tools = this.rootData.tools;
-				// if(this.rootData.selectedTool && this.rootData.selectedTool.ephemeral) {
-				// 	tools = [...tools, this.rootData.selectedTool];
-				// }
-
 				// Draw tools
 				for(const layout of this.layout) {
 					this.drawTool(layout);
@@ -267,10 +270,10 @@
 				this.ctx.restore();
 			},
 
-			findFontSize(text: string, rect: Rect, max?: number) {
+			findFontSize(font: string, text: string, rect: Rect, max?: number) {
 				if(max === undefined) {
 					for(max = 100; ; max += 100) {
-						this.ctx.font = `${max}px ${FONT}`;
+						this.ctx.font = `${max}px ${font}`;
 						const measure = this.ctx.measureText(text);
 						const width = measure.width, height = (measure.actualBoundingBoxAscent + measure.actualBoundingBoxDescent) || max;
 						if(width >= rect.width || height >= rect.height) {
@@ -293,11 +296,11 @@
 				}
 			},
 
-			text(text: string, rect: Rect, size: number, halign: 'left' | 'center' | 'right' = 'left', valign: 'top' | 'middle' | 'bottom' = 'top', scale: boolean = false) {
+			text(text: string, rect: Rect, size: number, halign: 'left' | 'center' | 'right' = 'left', valign: 'top' | 'middle' | 'bottom' = 'top', scale: boolean = false, font: string = FONT) {
 				if(scale) {
-					size = this.findFontSize(text, rect, size);
+					size = this.findFontSize(font, text, rect, size);
 				}
-				this.ctx.font = `${size}px ${FONT}`;
+				this.ctx.font = `${size}px ${font}`;
 				const measure = this.ctx.measureText(text);
 				const width = measure.width, height = (measure.actualBoundingBoxAscent + measure.actualBoundingBoxDescent) || this.ctx.measureText('M').width;
 				if(width > rect.width) { halign = 'left'; }
@@ -316,8 +319,39 @@
 				// this.ctx.strokeRect(x, y, width, -height);
 			},
 
+			getStyleForState(state: ToolState): { color: string; icon?: string } {
+				switch(state) {
+					case ToolState.good:
+						return {
+							color: '#ff3860',
+						};
+					case ToolState.stale:
+						return {
+							color: '#aaa',
+						};
+					case ToolState.running:
+						return {
+							color: '#714dd2',
+							icon: '\uf252', // hourglass-half
+						};
+					case ToolState.failed:
+					case ToolState.badInputs:
+						return {
+							color: '#ffdd57',
+							icon: '\uf071' // exclamation-triangle
+						};
+					case ToolState.cycle:
+						return {
+							color: '#ffa51f',
+							// icon: '\uf363', // recycle (pro)
+							icon: '\uf079', // retweet
+						};
+				}
+			},
+
 			drawTool(layout: ToolLayout) {
 				const { x, y, width, height } = layout.rect;
+				const { color, icon } = this.getStyleForState(layout.tool.state);
 
 				this.ctx.lineWidth = 3;
 				this.ctx.beginPath();
@@ -348,23 +382,26 @@
 				this.ctx.shadowColor = '#fff';
 				this.ctx.strokeStyle = '#fff';
 				this.ctx.stroke();
-				//TODO Maybe change up these colors
-				const clrs: { [K: string ]: string } = {
-					[ToolState.good]:    '#ff3860',
-					[ToolState.stale]:   '#aaa',
-					[ToolState.running]: '#714dd2',
-					[ToolState.failed]:  '#ffdd57',
-					[ToolState.cycle]:   '#ffa51f',
-				};
 				// 	const grad = this.ctx.createLinearGradient(x, y, x + width, y + height);
 				// 	for(let i = 0; i + .05 <= 1; i += .1) {
 				// 		grad.addColorStop(i, 'hsl(348, 100%, 61%)');
 				// 		grad.addColorStop(i + .05, 'hsl(348, 100%, 70%)');
 				// 	}
 				// 	this.ctx.fillStyle = grad;
-				this.ctx.fillStyle = clrs[layout.tool.state];
+				this.ctx.fillStyle = color;
 				this.ctx.fill();
 				this.ctx.shadowBlur = 0;
+
+				if(icon) {
+					const paddedRect: Rect = {
+						x: x + 3,
+						y: y + 3,
+						width: width - 6,
+						height: height - 6,
+					}
+					this.ctx.fillStyle='#fff';
+					this.text(icon, paddedRect, 12, 'right', 'bottom', false, 'FontAwesome');
+				}
 
 				// Find an inner rectangle within the main tool rectangle that avoids edges and connector labels
 				const innerTextRect: Rect = {

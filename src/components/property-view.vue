@@ -1,6 +1,11 @@
 <template>
-	<!-- TODO Scroll -->
 	<div class="form">
+		<b-message v-if="state.state === 'cycle'" type="is-warning">
+			Some of this tool's inputs are part of a circular dependency, so this tool cannot run.
+		</b-message>
+		<b-message v-else-if="state.state === 'failed'" type="is-danger">
+			This tool failed to run: {{ state.error }}
+		</b-message>
 		<div class="type-and-name">
 			<b-field v-if="rootData.selectedTool" label="Name">
 				<b-input :value="rootData.selectedTool.name" @input="setName($event)"></b-input>
@@ -16,7 +21,7 @@
 <script lang="ts">
 	//TODO Tool deletion
 	import { RootData } from '@/types';
-	import { ToolInst } from '@/tools';
+	import { ToolInst, ToolState } from '@/tools';
 	import groups from '@/tools/groups';
 
 	const editors: {[K: string]: (() => Promise<any>)} = {
@@ -31,6 +36,11 @@
 		}
 	}
 
+	interface State {
+		state?: ToolState;
+		error?: string;
+	}
+
 	import Vue from 'vue';
 	export default Vue.extend({
 		components: editors,
@@ -42,6 +52,10 @@
 			editorComponent(): string | undefined {
 				const tool = this.rootData.selectedTool;
 				return !tool ? undefined : tool.def.editor ? `tool-editor:${tool.def.name}` : 'tool-auto-editor';
+			},
+			state(): State {
+				const tool = this.rootData.selectedTool;
+				return !tool ? {} : { state: tool.state, error: tool.error }
 			},
 		},
 		methods: {
@@ -74,6 +88,10 @@
 		@keyframes stripe-animation {
 			from { background-position: @stripeSize 0; }
 			to { background-position: 0 0; }
+		}
+
+		> article {
+			margin: 10px;
 		}
 	}
 </style>
