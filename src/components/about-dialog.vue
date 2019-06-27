@@ -11,7 +11,7 @@
 				</div>
 			</section>
 			<footer class="modal-card-foot">
-				<a v-if="production" class="button" target="_blank" href="licenses.txt">Licenses</a>
+				<a v-if="hasLicenses" class="button" target="_blank" href="licenses.txt">Licenses</a>
 				<button class="button" type="button" @click="$parent.close">Close</button>
 			</footer>
 		</div>
@@ -20,16 +20,13 @@
 
 <script lang="ts">
 	// From DefinePlugin
-	declare var BUILD_VERSION: string, BUILD_DATE: string;
+	declare var BUILD_VERSION: string, BUILD_DATE: string, HAS_LICENSES: boolean;
 
 	import toolGroups from '@/tools/groups';
 
 	import Vue from 'vue';
 	export default Vue.extend({
 		computed: {
-			production(): boolean {
-				return (process.env.NODE_ENV == 'production');
-			},
 			buildVersion(): string {
 				return BUILD_VERSION;
 			},
@@ -43,6 +40,9 @@
 			toolCount(): number {
 				return toolGroups.map(group => group.tools).flat().length;
 			},
+			hasLicenses(): boolean {
+				return HAS_LICENSES;
+			}
 		},
 	});
 </script>

@@ -2,15 +2,26 @@ const child_process = require('child_process');
 const fs = require('fs');
 const pathlib = require('path');
 
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
+
+//TODO Self-contained builds still generate the other outputs, even though they're unneeded
+const selfContained = (process.env.SELF_CONTAINED !== undefined);
+
 module.exports = {
 	productionSourceMap: false,
 	devServer: {
 		host: '0.0.0.0',
 		disableHostCheck: true,
 	},
+	outputDir: selfContained ? 'dist-sc' : 'dist',
 
 	configureWebpack: config => {
-		if(config.mode == 'production') {
+		if(config.mode == 'development' && selfContained) {
+			throw new Error("Can't build self-contained file in dev mode");
+		}
+
+		if(config.mode == 'production' && !selfContained) {
 			config.plugins.push({
 				apply: compiler => {
 					compiler.hooks.afterEmit.tapPromise('LicenseGen', () => new Promise(resolve => {
@@ -22,14 +33,30 @@ module.exports = {
 				}
 			});
 		}
+		if(selfContained) {
+			config.plugins.push(
+				new HtmlWebpackPlugin({
+					template: 'public/index.html',  //template file to embed the source
+					inlineSource: '.(js|css)$' // embed all javascript and css inline
+				}),
+				new HtmlWebpackInlineSourcePlugin(),
+			);
+		}
 	},
 
 	chainWebpack: config => {
 		config.module.rule('schema').test(/\.schema$/).use('json-loader').loader('json-loader').end();
+		if(selfContained) {
+			config.module.rule('fonts').use('url-loader').tap(opts => {
+				opts.limit = undefined;
+				return opts;
+			});
+		}
 		config.plugin('define').tap(args => {
 			const gitDesc = child_process.execSync('git describe --all --long --abbrev=40 --dirty', { cwd: config.store.get('context'), encoding: 'utf8' });
 			args[0].BUILD_VERSION = JSON.stringify(gitDesc.replace(/^heads\//, '').trim());
 			args[0].BUILD_DATE = JSON.stringify(new Date().toGMTString());
+			args[0].HAS_LICENSES = JSON.stringify(config.mode == 'production' && !selfContained);
 			return args;
 		});
 	},
