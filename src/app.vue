@@ -2,7 +2,7 @@
 	<div class="app">
 		<nav class="navbar is-primary">
 			<div class="navbar-brand">
-				<div class="navbar-item">
+				<div class="navbar-item" @click="showAboutDialog = true">
 					<i class="fas fa-user-ninja"></i> Ninja
 				</div>
 			</div>
@@ -47,6 +47,9 @@
 		</nav>
 
 		<input type="file" ref="fileUpload" @change="loadFromDisk">
+		<b-modal :active.sync="showAboutDialog" has-modal-card>
+			<about-dialog></about-dialog>
+		</b-modal>
 		<b-modal :active.sync="showLoadStringDialog" has-modal-card>
 			<load-string-dialog @load="loadFromString"></load-string-dialog>
 		</b-modal>
@@ -127,6 +130,7 @@
 
 	//@ts-ignore No declaration file
 	import { SplitGrid, SplitGridArea, SplitGridGutter } from 'vue-split-grid';
+	import AboutDialog from './components/about-dialog.vue';
 	import LoadStringDialog from './components/load-string-dialog.vue';
 	import SaveDialog from './components/save-dialog.vue';
 	import ToolList from './components/tool-list.vue';
@@ -137,7 +141,7 @@
 	export default Vue.extend({
 		components: {
 			SplitGrid, SplitGridArea, SplitGridGutter,
-			LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, ErrorsView, DataFlowCanvas,
+			AboutDialog, LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, ErrorsView, DataFlowCanvas,
 		},
 		computed: {
 			rootData(): RootData {
@@ -157,6 +161,7 @@
 		data() {
 			return {
 				showErrorsPanel: false,
+				showAboutDialog: false,
 				showLoadStringDialog: false,
 				showSaveDialog: false,
 				savedScripts: [] as string[],
@@ -387,8 +392,11 @@ $colors: (
 			font-size: 18pt;
 			text-transform: uppercase;
 			margin-right: 30px;
-			i {
-				margin-right: 5px;
+			.navbar-item {
+				cursor: pointer;
+				i {
+					margin-right: 5px;
+				}
 			}
 		}
 		.navbar-end {
