@@ -112,6 +112,7 @@
 		// defaultSnackbarDuration: 5000,
 		defaultSnackbarPosition: 'is-top',
 		defaultNoticeQueue: false,
+		defaultModalCanCancel: ['escape', 'outside', 'button'],
 	});
 	import 'typeface-montserrat';
 	import '@fortawesome/fontawesome-free';
@@ -448,6 +449,10 @@ $colors: (
 				}
 			}
 		}
+	}
+
+	.modal-card-foot {
+		justify-content: flex-end;
 	}
 
 	// https://cssfx.dev/
