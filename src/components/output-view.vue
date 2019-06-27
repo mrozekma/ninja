@@ -1,17 +1,14 @@
 <template>
-	<fieldset class="form" disabled>
-		<b-field v-for="output in outputs" :key="output.name" :class="{wide: (output.type == 'text')}">
+	<b-message v-if="message !== undefined" :type="message.type">
+		{{ message.text }}
+	</b-message>
+	<fieldset v-else class="form" disabled>
+		<b-field v-for="output in outputs" :key="output.name" :class="{wide: (output.type == 'text')}" :type="stale ? 'is-danger' : ''">
 			<template slot="label">
 				{{ output.description }}
 				<b-tag type="is-primary">{{ output.name }}</b-tag>
 			</template>
-			<b-input v-if="output.type == 'string'" :value="output.val"></b-input>
-			<b-input v-else-if="output.type == 'text'" type="textarea" :value="output.val"></b-input>
-			<b-switch v-else-if="output.type == 'boolean'" :value="output.val">{{ output.val ? "Enabled" : "Disabled" }}</b-switch>
-			<b-numberinput v-else-if="output.type == 'number'" :value="output.val"></b-numberinput>
-			<b-select v-else-if="output.type == 'enum'" :value="output.val">
-				<option v-for="option in output.options" :value="option">{{ option }}</option>
-			</b-select>
+			<tool-io :input="output"></tool-io>
 		</b-field>
 	</fieldset>
 </template>
@@ -20,10 +17,12 @@
 	//TODO Global outputs when no tool selected
 	//TODO Allow copying outputs, changing display format
 	import { RootData } from '@/types';
-	import { Output } from '@/tools';
+	import { Output, ToolState } from '@/tools';
 
 	import Vue from 'vue';
+	import ToolIOComponent from '@/components/tool-io.vue';
 	export default Vue.extend({
+		components: { ToolIo: ToolIOComponent },
 		computed: {
 			rootData(): RootData {
 				//@ts-ignore
@@ -33,12 +32,29 @@
 				const tool = this.rootData.selectedTool;
 				return tool ? tool.outputs : [];
 			},
+			message(): { type: string; text: string } | undefined {
+				const tool = this.rootData.selectedTool;
+				if(!tool) {
+					return undefined;
+				}
+				switch(tool.state) {
+					case ToolState.good: return undefined;
+					case ToolState.running: return { type: 'is-info', text: "Running..." };
+					case ToolState.badInputs: return { type: 'is-danger', text: "Invalid inputs prevented this tool from running." };
+					case ToolState.failed: return { type: 'is-danger', text: `This tool failed to run: ${tool.error}.` };
+					case ToolState.cycle: return { type: 'is-warning', text: "A circular dependency prevented this tool from running." };
+				}
+			},
 		},
 	});
 </script>
 
 <style lang="less" scoped>
-	.form {
+	article {
+		margin: 10px;
+	}
+
+.form {
 		display: flex;
 		flex-wrap: wrap;
 

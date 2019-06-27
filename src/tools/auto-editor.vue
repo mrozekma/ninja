@@ -10,18 +10,11 @@
 						Connected to {{ input.connection.output.tool.name }}.{{ input.connection.output.name }}
 					</b-tag>
 				</span>
-				<span v-else>
-					<!-- TODO Click to connect -->
-					<b-tag type="is-primary">
-						<i class="fas fa-unlink"></i>
-						Independent
-					</b-tag>
-				</span>
 			</template>
 			<b-message v-if="input.connection && input.connection.error" type="is-danger">
 				{{ input.connection.error }}
 			</b-message>
-			<tool-input v-else :input="input"></tool-input>
+			<tool-io v-else :input="input"></tool-io>
 		</b-field>
 	</div>
 </template>
@@ -31,9 +24,9 @@
 	import { Input } from '@/tools';
 
 	import Vue from 'vue';
-	import ToolInputComponent from '@/components/tool-input.vue';
+	import ToolIOComponent from '@/components/tool-io.vue';
 	export default Vue.extend({
-		components: { ToolInput: ToolInputComponent },
+		components: { ToolIo: ToolIOComponent },
 		computed: {
 			rootData(): RootData {
 				//@ts-ignore

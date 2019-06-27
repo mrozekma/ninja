@@ -9,7 +9,7 @@
 		v-else-if="input.type == 'text'"
 		type="textarea"
 		:value="input.val"
-		@input="set(input, $event)"
+		@input="scaleText($event); set(input, $event)"
 		:loading="loading"
 		:disabled="disabled"></b-input>
 	<b-switch
@@ -44,6 +44,10 @@
 	export default Vue.extend({
 		props: {
 			input: Object as PropType<Input>,
+			stale: {
+				type: Boolean as PropType<boolean>,
+				default: false,
+			}
 		},
 		computed: {
 			rootData(): RootData {
@@ -51,7 +55,7 @@
 				return this.$root;
 			},
 			loading(): boolean {
-				return !!(this.input.connection && !this.input.connection.upToDate);
+				return this.stale || !!(this.input.connection && !this.input.connection.upToDate);
 			},
 			disabled(): boolean {
 				return (this.input.connection !== undefined);
@@ -71,6 +75,11 @@
 			set(input: Input, value: any) {
 				this.rootData.toolManager.setInput(input, value);
 			},
+			scaleText(e: Event) {
+				console.log(this.$el);
+				//   this.style.height = 'auto';
+//   this.style.height = (this.scrollHeight) + 'px';
+			}
 		},
 	});
 </script>

@@ -151,6 +151,9 @@ export abstract class ToolInst {
 
 	get error(): string | undefined { return this._error; }
 
+	//NB: Tools can dynamically hide inputs and outputs, but should keep reusing the same instances so connections can come back.
+	// It's also important for every input/output to exist on construction or saves depending on missing IOs can't be loaded.
+	//TODO ^-- Can this be fixed? Would need to change ToolManager.deserialize() somehow
 	abstract get inputs(): Input[];
 	abstract get outputs(): Output[];
 
@@ -448,15 +451,25 @@ export class ToolManager {
 						set.delete(tool);
 						promises.push(tool.run().then(() => {
 							console.log(`  Finished with ${tool.name}`);
+							// Propagate this tool's outputs to any connected inputs
 							for(const output of tool.outputs) {
 								console.log(`    Setting ${output.name}`);
 								for(const input of connections.get(output)) {
 									console.log(`      Connected to ${input.name}`);
 									this.setInputIndirect(input);
 									if(input.connection!.error !== undefined) {
-										input.tool.state = ToolState.failed;
+										input.tool.state = ToolState.badInputs;
 									}
 									set.add(input.tool);
+								}
+							}
+							// Find any inputs connected to now-missing outputs
+							for(const output of connections.keys()) {
+								if(output.tool === tool && tool.outputs.indexOf(output) < 0) {
+									for(const input of connections.get(output)) {
+										input.connection!.error = `Connected output ${output.tool.name}.${output.name} no longer exists`;
+										input.tool.state = ToolState.badInputs;
+									}
 								}
 							}
 						}));

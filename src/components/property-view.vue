@@ -4,7 +4,7 @@
 			Some of this tool's inputs are part of a circular dependency, so this tool cannot run.
 		</b-message>
 		<b-message v-else-if="state.state === 'failed'" type="is-danger">
-			This tool failed to run: {{ state.error }}
+			This tool failed to run: {{ state.error }}.
 		</b-message>
 		<div class="type-and-name">
 			<b-field v-if="rootData.selectedTool" label="Name">

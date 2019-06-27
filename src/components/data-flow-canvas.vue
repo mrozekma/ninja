@@ -228,7 +228,7 @@
 						if(inputCon.field.connection) {
 							const output: Output = inputCon.field.connection.output;
 							const outputLayout = this.layout.find(layout => layout.tool == output.tool)!;
-							const outputCon = outputLayout.outputs.find(con => con.field == output)!;
+							const outputCon = outputLayout.outputs.find(con => con.field == output);
 							this.drawConnection(inputCon, outputCon, inputCon.field.connection.upToDate);
 						}
 					}
@@ -434,37 +434,50 @@
 				}
 			},
 
-			drawConnection(source: Connector, sink: Connector | Point, upToDate: boolean = true) {
+			drawConnection(source: Connector, sink?: Connector | Point, upToDate: boolean = true) {
 				const sourceCenter = {
 					x: source.rect.x + source.rect.width / 2,
 					y: source.rect.y + source.rect.height / 2,
 				};
-				const sinkCenter = isPoint(sink) ? sink : {
+				const sinkCenter = !sink ? undefined : isPoint(sink) ? sink : {
 					x: sink.rect.x + sink.rect.width / 2,
 					y: sink.rect.y + sink.rect.height / 2,
 				};
-
-				this.ctx.strokeStyle = upToDate ? 'hsl(348, 100%, 31%)' : '#888';
-				this.ctx.fillStyle = upToDate ? 'hsl(348, 100%, 61%)' : '#aaa';
 
 				// Line between the connectors
 				//TODO Bend differently if the output tool is below the input tool
 				this.ctx.beginPath();
 				this.ctx.moveTo(sourceCenter.x, sourceCenter.y);
-				this.ctx.bezierCurveTo(
-					sourceCenter.x, sourceCenter.y + (source.type == 'input' ? -50 : 50),
-					sinkCenter.x, sinkCenter.y + (source.type == 'input' ? 50 : -50),
-					sinkCenter.x, sinkCenter.y,
-				);
+				if(sinkCenter) {
+					this.ctx.bezierCurveTo(
+						sourceCenter.x, sourceCenter.y + (source.type == 'input' ? -50 : 50),
+						sinkCenter.x, sinkCenter.y + (source.type == 'input' ? 50 : -50),
+						sinkCenter.x, sinkCenter.y,
+					);
+				} else {
+					this.ctx.lineTo(sourceCenter.x, sourceCenter.y + (source.type == 'input' ? -32 : 32));
+				}
+				this.ctx.strokeStyle = upToDate ? 'hsl(348, 100%, 31%)' : '#888';
 				this.ctx.stroke();
 
-				// Connector circles (these are drawn after the line so the fill is on top)
+				// Connector endpoints (these are drawn after the line so the fill is on top)
 				for(const point of [sourceCenter, sinkCenter]) {
-					this.ctx.beginPath();
-					this.ctx.moveTo(point.x, point.y); //TODO Does nothing?
-					this.ctx.arc(point.x, point.y, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
-					this.ctx.stroke();
-					this.ctx.fill();
+					this.ctx.fillStyle = upToDate ? 'hsl(348, 100%, 61%)' : '#aaa';
+					if(point) {
+						this.ctx.beginPath();
+						this.ctx.arc(point.x, point.y, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
+						this.ctx.stroke();
+						this.ctx.fill();
+					} else {
+						const rect: Rect = {
+							x: sourceCenter.x - 8,
+							width: 16,
+							y: sourceCenter.y - 48,
+							height: 16,
+						}
+						this.ctx.fillStyle = '#888';
+						this.text('\uf057', rect, 16, 'center', 'bottom', false, 'FontAwesome');
+					}
 				}
 			},
 
