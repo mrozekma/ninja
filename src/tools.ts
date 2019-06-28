@@ -322,6 +322,9 @@ export class ToolManager {
 		if(idx === undefined) {
 			throw new Error(`Unrecognized tool: ${tool.name}`);
 		}
+		if(this.selectedTool === tool) {
+			this.selectedTool = undefined;
+		}
 		this._tools.splice(idx, 1);
 	}
 

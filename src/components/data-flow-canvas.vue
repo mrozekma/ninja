@@ -1,5 +1,5 @@
 <template>
-	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown.left="mousedown" @mouseup.left="mouseup" @wheel="wheel">
+	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown.left="mousedown" @mouseup.left="mouseup" @click.middle="middleclick" @wheel="wheel">
 		{{ canvas }}
 	</canvas>
 </template>
@@ -592,6 +592,12 @@
 					case 'dragging-tool':
 						this.mouse.state = 'over-tool';
 						break;
+				}
+			},
+
+			middleclick(e: MouseEvent) {
+				if(this.mouse.state == 'over-tool') {
+					this.toolManager.removeTool(this.mouse.tool);
 				}
 			},
 

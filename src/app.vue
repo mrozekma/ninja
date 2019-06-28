@@ -68,7 +68,10 @@
 			<split-grid-area class="col" size-unit="fr" :size-value="1">
 				<split-grid direction="row" :gutter-size="3" class="center-grid"  @drag-start="data => gridDragStart('center', data.direction, data.track)" @drag-end="data => gridDragEnd('center', data.direction, data.track)">
 					<split-grid-area class="col scroll" size-unit="fr" :size-value="3">
-						<h1>Properties</h1>
+						<h1>
+							Properties
+							<i v-if="toolManager.selectedTool" class="fas fa-trash-alt" @click="deleteTool(toolManager.selectedTool)"></i>
+						</h1>
 						<div>
 							<property-view></property-view>
 						</div>
@@ -319,6 +322,10 @@
 				}
 			},
 
+			deleteTool(tool: ToolInst) {
+				this.toolManager.removeTool(tool);
+			},
+
 			runAll() {
 				if(!this.anyTools) {
 					return this.showNoToolsWarning();
@@ -441,6 +448,8 @@ $colors: (
 		.scroll {
 			overflow-y: auto;
 			> h1 {
+				display: grid;
+				grid-template-columns: 1fr auto;
 				position: sticky;
 				top: 0;
 				left: 0;
