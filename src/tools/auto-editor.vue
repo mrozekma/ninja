@@ -20,7 +20,6 @@
 </template>
 
 <script lang="ts">
-	import { RootData } from '@/types';
 	import { Input } from '@/tools';
 
 	import Vue from 'vue';
@@ -28,18 +27,14 @@
 	export default Vue.extend({
 		components: { ToolIo: ToolIOComponent },
 		computed: {
-			rootData(): RootData {
-				//@ts-ignore
-				return this.$root;
-			},
 			inputs(): Input[] {
-				const tool = this.rootData.selectedTool;
+				const tool = this.toolManager.selectedTool;
 				return tool ? tool.inputs : [];
 			},
 		},
 		methods: {
 			disconnect(input: Input) {
-				this.rootData.toolManager.disconnect(input);
+				this.toolManager.disconnect(input);
 			},
 		},
 	});

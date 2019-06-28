@@ -18,7 +18,7 @@
 	//TODO Search
 	//TODO Expand/collapse animation
 	import toolGroups from '@/tools/groups';
-	import { ToolGroup, RootData } from '@/types';
+	import { ToolGroup } from '@/types';
 	import { ToolDef } from '@/tools';
 
 	interface ToolGroupGUI extends ToolGroup {
@@ -27,12 +27,6 @@
 
 	import Vue from 'vue'
 	export default Vue.extend({
-		computed: {
-			rootData(): RootData {
-				//@ts-ignore
-				return this.$root;
-			}
-		},
 		data() {
 			const groups = toolGroups.map<ToolGroupGUI>(group => ({
 				...group,
@@ -45,7 +39,7 @@
 		},
 		methods: {
 			selectTool(def: ToolDef) {
-				this.rootData.selectedTool = this.rootData.toolManager.addTool(def);
+				this.toolManager.selectedTool = this.toolManager.addTool(def);
 			},
 		},
 	});

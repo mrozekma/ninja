@@ -266,6 +266,8 @@ class MapWithDefault<K, V> extends Map<K, V> {
 }
 
 export class ToolManager {
+	public selectedTool: ToolInst | undefined = undefined;
+
 	constructor(private _tools: ToolInst[] = []) {}
 
 	get tools(): Readonly<ToolInst[]> {

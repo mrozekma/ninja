@@ -3,7 +3,7 @@
 		{{ message.text }}
 	</b-message>
 	<fieldset v-else class="form" disabled>
-		<b-field v-for="output in outputs" :key="output.name" :class="{wide: (output.type == 'text')}" :type="stale ? 'is-danger' : ''">
+		<b-field v-for="output in outputs" :key="output.name" :class="{wide: (output.type == 'text')}">
 			<template slot="label">
 				{{ output.description }}
 				<b-tag type="is-primary">{{ output.name }}</b-tag>
@@ -16,7 +16,6 @@
 <script lang="ts">
 	//TODO Global outputs when no tool selected
 	//TODO Allow copying outputs, changing display format
-	import { RootData } from '@/types';
 	import { Output, ToolState } from '@/tools';
 
 	import Vue from 'vue';
@@ -24,16 +23,12 @@
 	export default Vue.extend({
 		components: { ToolIo: ToolIOComponent },
 		computed: {
-			rootData(): RootData {
-				//@ts-ignore
-				return this.$root;
-			},
 			outputs(): Output[] {
-				const tool = this.rootData.selectedTool;
+				const tool = this.toolManager.selectedTool;
 				return tool ? tool.outputs : [];
 			},
 			message(): { type: string; text: string } | undefined {
-				const tool = this.rootData.selectedTool;
+				const tool = this.toolManager.selectedTool;
 				if(!tool) {
 					return undefined;
 				}

@@ -1,4 +1,4 @@
-import { ToolDef, ToolInst, ToolManager } from './tools';
+import { ToolDef } from './tools';
 
 export interface ToolGroup {
 	name: string;
@@ -13,9 +13,4 @@ export interface Point {
 
 export function isPoint(pt: any): pt is Point {
 	return pt.x !== undefined && pt.y !== undefined;
-}
-
-export interface RootData {
-	toolManager: ToolManager,
-	selectedTool?: ToolInst;
 }

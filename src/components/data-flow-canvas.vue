@@ -6,7 +6,7 @@
 
 <script lang="ts">
 	//TODO Autolayout: https://github.com/dagrejs/dagre/wiki https://www.npmjs.com/package/elkjs
-	import { Point, isPoint, RootData } from '@/types';
+	import { Point, isPoint } from '@/types';
 	import { ToolInst, ToolState, Input, Output } from '@/tools'
 
 	interface Rect extends Point {
@@ -82,10 +82,6 @@
 	import Vue, { PropType } from 'vue';
 	export default Vue.extend({
 		computed: {
-			rootData(): RootData {
-				//@ts-ignore
-				return this.$root;
-			},
 			cursor(): string {
 				if(this.connecting) {
 					if(this.mouse.state == 'over-connector') {
@@ -105,7 +101,7 @@
 				}
 			},
 			layout(): ToolLayout[] {
-				return this.rootData.toolManager.tools.map(this.layoutTool);
+				return this.toolManager.tools.map(this.layoutTool);
 			},
 		},
 		data() {
@@ -378,7 +374,7 @@
 				this.ctx.lineTo(x, y - 1.5); //TODO I think this -1.5 is affected by the scale
 
 				// Draw the tool
-				this.ctx.shadowBlur = (layout.tool == this.rootData.selectedTool) ? 10 : 0;
+				this.ctx.shadowBlur = (layout.tool == this.toolManager.selectedTool) ? 10 : 0;
 				this.ctx.shadowColor = '#fff';
 				this.ctx.strokeStyle = '#fff';
 				this.ctx.stroke();
@@ -553,12 +549,12 @@
 						if(this.connecting) {
 							this.connecting = undefined;
 						} else {
-							this.rootData.selectedTool = undefined;
+							this.toolManager.selectedTool = undefined;
 						}
 						break;
 					case 'over-tool':
 						this.mouse.state = 'dragging-tool';
-						this.rootData.selectedTool = this.mouse.tool;
+						this.toolManager.selectedTool = this.mouse.tool;
 						break;
 					case 'over-connector':
 						if(!this.mouse.valid) {
@@ -604,14 +600,14 @@
 			},
 
 			connect(inputCon: InputConnector, outputCon: OutputConnector) {
-				this.rootData.toolManager.connect(inputCon.field, outputCon.field);
+				this.toolManager.connect(inputCon.field, outputCon.field);
 			},
 
 			disconnect(inputCon: InputConnector) {
 				if(inputCon.field.connection === undefined) {
 					return false;
 				} else {
-					this.rootData.toolManager.disconnect(inputCon.field);
+					this.toolManager.disconnect(inputCon.field);
 					return true;
 				}
 			},

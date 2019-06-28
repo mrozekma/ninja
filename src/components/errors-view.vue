@@ -10,7 +10,6 @@
 </template>
 
 <script lang="ts">
-	import { RootData } from '@/types';
 	import { ToolError, ToolInst } from '@/tools';
 
 	import Vue, { PropType } from 'vue';
@@ -18,15 +17,9 @@
 		props: {
 			errors: Array as PropType<ToolError[]>,
 		},
-		computed: {
-			rootData(): RootData {
-				//@ts-ignore
-				return this.$root;
-			},
-		},
 		methods: {
 			selectTool(tool: ToolInst) {
-				this.rootData.selectedTool = tool;
+				this.toolManager.selectedTool = tool;
 			},
 		},
 	});

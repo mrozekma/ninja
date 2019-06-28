@@ -124,7 +124,6 @@
 	import { saveAs } from 'file-saver';
 	import * as clipboard from 'clipboard-polyfill';
 
-	import { RootData } from './types';
 	import { ToolInst, ToolError, ToolState } from './tools';
 	import toolGroups from './tools/groups';
 
@@ -144,18 +143,14 @@
 			AboutDialog, LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, ErrorsView, DataFlowCanvas,
 		},
 		computed: {
-			rootData(): RootData {
-				//@ts-ignore
-				return this.$root;
-			},
 			anyTools(): boolean {
-				return this.rootData.toolManager.tools.length > 0;
+				return this.toolManager.tools.length > 0;
 			},
 			running(): boolean {
-				return this.rootData.toolManager.tools.some(tool => tool.state == ToolState.running);
+				return this.toolManager.tools.some(tool => tool.state == ToolState.running);
 			},
 			errors(): ToolError[] {
-				return Array.from(this.rootData.toolManager.iterErrors());
+				return Array.from(this.toolManager.iterErrors());
 			},
 		},
 		data() {
@@ -206,15 +201,15 @@
 			},
 
 			clear() {
-				const old = [...this.rootData.toolManager.tools];
-				this.rootData.toolManager.tools = [];
-				this.rootData.selectedTool = undefined;
+				const old = [...this.toolManager.tools];
+				this.toolManager.tools = [];
+				this.toolManager.selectedTool = undefined;
 				this.$snackbar.open({
 					message: 'Tools cleared',
 					type: 'is-info',
 					duration: 5000,
 					actionText: 'Undo',
-					onAction: () => { this.rootData.toolManager.tools = old; this.rootData.selectedTool = undefined; },
+					onAction: () => { this.toolManager.tools = old; this.toolManager.selectedTool = undefined; },
 				});
 			},
 
@@ -256,16 +251,16 @@
 			},
 
 			loadFromString(data: string) {
-				const old = [...this.rootData.toolManager.tools];
+				const old = [...this.toolManager.tools];
 				try {
-					this.rootData.toolManager.deserialize(data, toolGroups.map(group => group.tools).flat());
-					this.rootData.selectedTool = undefined;
+					this.toolManager.deserialize(data, toolGroups.map(group => group.tools).flat());
+					this.toolManager.selectedTool = undefined;
 					this.$snackbar.open({
 						message: 'Tools loaded',
 						type: 'is-info',
 						duration: 5000,
 						actionText: 'Undo',
-						onAction: () => { this.rootData.toolManager.tools = old; this.rootData.selectedTool = undefined; },
+						onAction: () => { this.toolManager.tools = old; this.toolManager.selectedTool = undefined; },
 					});
 				} catch(e) {
 					console.error(e);
@@ -297,7 +292,7 @@
 				// Anti-pattern ahoy
 				switch(target) {
 					case 'browser':
-						localStorage.setItem(`savedTool.${name}`, this.rootData.toolManager.serialize('compact'));
+						localStorage.setItem(`savedTool.${name}`, this.toolManager.serialize('compact'));
 						this.savedScripts = this.findSavedNames();
 						this.$snackbar.open({
 							message: "Script saved",
@@ -306,10 +301,10 @@
 						});
 						break;
 					case 'disk':
-						saveAs(new Blob([ this.rootData.toolManager.serialize('friendly') ], { type: 'text/plain' }), `${name}.ninja`);
+						saveAs(new Blob([ this.toolManager.serialize('friendly') ], { type: 'text/plain' }), `${name}.ninja`);
 						break;
 					case 'clipboard':
-						clipboard.writeText(window.location.href.split('#')[0] + '#' + this.rootData.toolManager.serialize('base64'))
+						clipboard.writeText(window.location.href.split('#')[0] + '#' + this.toolManager.serialize('base64'))
 							.then(() => this.$snackbar.open({
 								message: "Link copied to clipboard",
 								type: 'is-info',
@@ -328,7 +323,7 @@
 				if(!this.anyTools) {
 					return this.showNoToolsWarning();
 				}
-				this.rootData.toolManager.updateData();
+				this.toolManager.updateData();
 				this.$snackbar.open({
 					message: 'Manually rerunning all tools',
 					type: 'is-info',

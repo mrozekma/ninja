@@ -7,11 +7,11 @@
 			This tool failed to run: {{ state.error }}.
 		</b-message>
 		<div class="type-and-name">
-			<b-field v-if="rootData.selectedTool" label="Name">
-				<b-input :value="rootData.selectedTool.name" @input="setName($event)"></b-input>
+			<b-field v-if="toolManager.selectedTool" label="Name">
+				<b-input :value="toolManager.selectedTool.name" @input="setName($event)"></b-input>
 			</b-field>
-			<b-field v-if="rootData.selectedTool" label="Type">
-				<b-input :value="rootData.selectedTool.def.name" disabled></b-input>
+			<b-field v-if="toolManager.selectedTool" label="Type">
+				<b-input :value="toolManager.selectedTool.def.name" disabled></b-input>
 			</b-field>
 		</div>
 		<component v-if="editorComponent" :is="editorComponent"></component>
@@ -20,7 +20,6 @@
 
 <script lang="ts">
 	//TODO Tool deletion
-	import { RootData } from '@/types';
 	import { ToolInst, ToolState } from '@/tools';
 	import groups from '@/tools/groups';
 
@@ -45,23 +44,19 @@
 	export default Vue.extend({
 		components: editors,
 		computed: {
-			rootData(): RootData {
-				//@ts-ignore
-				return this.$root;
-			},
 			editorComponent(): string | undefined {
-				const tool = this.rootData.selectedTool;
+				const tool = this.toolManager.selectedTool;
 				return !tool ? undefined : tool.def.editor ? `tool-editor:${tool.def.name}` : 'tool-auto-editor';
 			},
 			state(): State {
-				const tool = this.rootData.selectedTool;
+				const tool = this.toolManager.selectedTool;
 				return !tool ? {} : { state: tool.state, error: tool.error }
 			},
 		},
 		methods: {
 			setName(name: string) {
 				//TODO Handle name collisions
-				this.rootData.selectedTool!.name = name;
+				this.toolManager.selectedTool!.name = name;
 			}
 		},
 	});

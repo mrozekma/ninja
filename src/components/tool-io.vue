@@ -37,7 +37,6 @@
 </template>
 
 <script lang="ts">
-	import { RootData } from '@/types';
 	import { Input } from '@/tools';
 
 	import Vue, { PropType } from 'vue';
@@ -50,10 +49,6 @@
 			}
 		},
 		computed: {
-			rootData(): RootData {
-				//@ts-ignore
-				return this.$root;
-			},
 			loading(): boolean {
 				return this.stale || !!(this.input.connection && !this.input.connection.upToDate);
 			},
@@ -73,7 +68,7 @@
 		},
 		methods: {
 			set(input: Input, value: any) {
-				this.rootData.toolManager.setInput(input, value);
+				this.toolManager.setInput(input, value);
 			},
 			scaleText(e: Event) {
 				console.log(this.$el);
