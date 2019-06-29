@@ -186,12 +186,12 @@
 				}
 			},
 
-			layoutInputs(inputs: Input[], edge: Point & { width: number }): InputConnector[] {
+			layoutInputs(inputs: Readonly<Input[]>, edge: Point & { width: number }): InputConnector[] {
 				const rects = this.layoutConnectors(inputs.length, edge);
 				return inputs.map<InputConnector>(input => ({ type: 'input', field: input, rect: rects.next().value }));
 			},
 
-			layoutOutputs(outputs: Output[], edge: Point & { width: number }): OutputConnector[] {
+			layoutOutputs(outputs: Readonly<Output[]>, edge: Point & { width: number }): OutputConnector[] {
 				const rects = this.layoutConnectors(outputs.length, edge);
 				return outputs.map<OutputConnector>(output => ({ type: 'output', field: output, rect: rects.next().value }));
 			},

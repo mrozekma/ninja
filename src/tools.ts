@@ -29,42 +29,53 @@ export interface RemoteConnection {
 	error: string | undefined;
 }
 
-interface OutputCommon {
+interface OutputMixin {
+	tool: ToolInst;
 	name: string;
 	description: string;
-	tool: ToolInst;
 }
-type OutputStringText = OutputCommon & {
+
+// An input is just like an output but with an extra field to track if it's connected to another tool's output
+interface InputMixin extends OutputMixin {
+	connection: RemoteConnection | undefined; // This is mandatory (i.e. not "connection?: RemoteConnection") so that Vue has a chance to attach a setter
+}
+
+interface StringMixin {
 	type: 'string' | 'text';
 	val: string;
 }
-type OutputBoolean = OutputCommon & {
+
+interface BooleanMixin {
 	type: 'boolean';
 	labels?: [ string, string ]; // [ enabled, disabled ]
 	val: boolean;
 }
-type OutputNumber = OutputCommon & {
+interface NumberMixin {
 	type: 'number';
 	min?: number;
 	max?: number;
 	val: number;
 }
-type OutputEnum = OutputCommon & {
+interface EnumMixin {
 	type: 'enum';
 	options: string[];
 	val: string;
 }
 
-export type Output<T = string | boolean | number> =
-	T extends string ? OutputStringText | OutputEnum :
-	T extends boolean ? OutputBoolean :
-	T extends number ? OutputNumber :
-	never
+// It should be possible to do this with generic Input<T> and Output<T> types, but having lots of problems with makeInput/Output()
+export type StringInput = InputMixin & StringMixin
+export type BooleanInput = InputMixin & BooleanMixin
+export type NumberInput = InputMixin & NumberMixin
+export type EnumInput = InputMixin & EnumMixin
+export type Input = StringInput | BooleanInput | NumberInput | EnumInput
 
-// An input is just like an output but with an extra field to track if it's connected to another tool's output
-export type Input<T = string | boolean | number> = Output<T> & {
-	connection: RemoteConnection | undefined; // This is mandatory (i.e. not "connection?: RemoteConnection") so that Vue has a chance to attach a setter
-}
+export type StringOutput = OutputMixin & StringMixin
+export type BooleanOutput = OutputMixin & BooleanMixin
+export type NumberOutput = OutputMixin & NumberMixin
+export type EnumOutput = OutputMixin & EnumMixin
+export type Output = StringOutput | BooleanOutput | NumberOutput | EnumOutput
+
+export type IOValTypes = string | boolean | number
 
 export interface ToolError {
 	tool: ToolInst;
@@ -72,7 +83,7 @@ export interface ToolError {
 	error: string;
 }
 
-export function convertToString(val: string | boolean | number): string {
+export function convertToString(val: IOValTypes): string {
 	switch(typeof val) {
 		case 'string': return val;
 		case 'boolean': return val ? 'true' : 'false';
@@ -80,7 +91,7 @@ export function convertToString(val: string | boolean | number): string {
 	}
 }
 
-export function convertToBoolean(val: string | boolean | number): boolean {
+export function convertToBoolean(val: IOValTypes): boolean {
 	switch(typeof val) {
 		case 'string': return ['true', 'yes'].indexOf(val.toLowerCase()) >= 0;
 		case 'boolean': return val;
@@ -88,7 +99,7 @@ export function convertToBoolean(val: string | boolean | number): boolean {
 	}
 }
 
-export function convertToNumber(val: string | boolean | number): number {
+export function convertToNumber(val: IOValTypes): number {
 	switch(typeof val) {
 		case 'string':
 			const rtn = parseInt(val, 10);
@@ -101,7 +112,7 @@ export function convertToNumber(val: string | boolean | number): number {
 	}
 }
 
-export function convertToInputType(val: string | boolean | number, input: Input): string | boolean | number {
+export function convertToInputType(val: IOValTypes, input: Input): IOValTypes {
 	switch(input.type) {
 		case 'string':
 		case 'text':
@@ -133,6 +144,9 @@ export abstract class ToolInst {
 	private _state: ToolState;
 	private _error: string | undefined;
 
+	protected allInputs: Input[] = [];
+	protected allOutputs: Output[] = [];
+
 	constructor(public readonly def: ToolDef, name: string) {
 		this._name = name;
 		this._loc = {x: 10, y: 10};
@@ -154,11 +168,23 @@ export abstract class ToolInst {
 	//NB: Tools can dynamically hide inputs and outputs, but should keep reusing the same instances so connections can come back.
 	// It's also important for every input/output to exist on construction or saves depending on missing IOs can't be loaded.
 	//TODO ^-- Can this be fixed? Would need to change ToolManager.deserialize() somehow
-	abstract get inputs(): Input[];
-	abstract get outputs(): Output[];
+	get inputs(): Readonly<Input[]> {
+		return this.allInputs;
+	}
 
-	// Called when the user is manually setting a input's value
-	setInput(input: Input, val: string | boolean | number) {
+	set inputs(inputs: Readonly<Input[]>) {
+		this.allInputs.splice(0, this.allInputs.length, ...inputs);
+	}
+
+	get outputs(): Readonly<Output[]> {
+		return this.allOutputs;
+	}
+
+	set outputs(outputs: Readonly<Output[]>) {
+		this.allOutputs.splice(0, this.allOutputs.length, ...outputs);
+	}
+
+	setInputVal(input: Input, val: IOValTypes) {
 		if(input.tool != this) {
 			throw new Error(`Input for wrong tool`);
 		} else if(input.connection !== undefined) {
@@ -174,8 +200,29 @@ export abstract class ToolInst {
 		}
 
 		console.log(`${this.name}.${input.name} = ${val}`);
+		const oldVal = input.val;
 		input.val = val;
 		this.state = ToolState.stale;
+		this.onInputSet(input, oldVal);
+	}
+
+	propagateInputVal(input: Input) {
+		if(input.tool != this) {
+			throw new Error(`Input for wrong tool`);
+		} else if(input.connection === undefined) {
+			throw new Error(`Input ${input.tool.name}.${input.name} is unbound`);
+		}
+		const oldVal = input.val;
+		const output = input.connection.output;
+		try {
+			input.val = convertToInputType(output.val, input);
+		} catch(e) {
+			input.connection.error = `Unable to convert ${output.type} ${output.tool.name}.${output.name} to ${input.type} ${input.tool.name}.${input.name}: ${e.message}`;
+			return;
+		}
+		input.connection.upToDate = true;
+		this.state = ToolState.stale;
+		this.onInputSet(input, oldVal);
 	}
 
 	async run(): Promise<void> {
@@ -195,14 +242,16 @@ export abstract class ToolInst {
 		}
 	}
 
-	abstract async runImpl(): Promise<void>;
+	protected abstract async runImpl(): Promise<void>;
+
+	protected onInputSet(input: Input, oldVal: string | number | boolean) {}
 
 	serialize(): object {
 		return {
 			type: this.def.name,
 			name: this.name,
 			loc: this.loc,
-			inputs: this.inputs.reduce<{ [K: string]: string | boolean | number }>((map, input) => {
+			inputs: this.inputs.reduce<{ [K: string]: IOValTypes }>((map, input) => {
 				if(input.connection === undefined) {
 					map[input.name] = input.val;
 				}
@@ -215,6 +264,45 @@ export abstract class ToolInst {
 				return map;
 			}, {}),
 		};
+	}
+
+	private recordInput<T extends Input>(inp: T): T {
+		this.allInputs.push(inp);
+		return inp;
+	}
+
+	private recordOutput<T extends Output>(out: T): T {
+		this.allOutputs.push(out);
+		return out;
+	}
+
+	// These make me so sad. See the above comment about generic Input<T>/Output<T>
+	protected makeStringInput = (name: string, description: string, type: 'string' | 'text' = 'string', val: string = ''): StringInput => this.recordInput({ name, description, type, val, tool: this, connection: undefined });
+	protected makeBooleanInput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanInput => this.recordInput({ name, description, type: 'boolean', val, labels, tool: this, connection: undefined });
+	protected makeNumberInput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberInput => this.recordInput({ name, description, type: 'number', val, min, max, tool: this, connection: undefined });
+	protected makeEnumInput = (name: string, description: string, val: string, options: string[]): EnumInput => this.recordInput({ name, description, type: 'enum', val, options, tool: this, connection: undefined });
+
+	protected makeStringOutput = (name: string, description: string, type: 'string' | 'text' = 'string', val: string = ''): StringOutput => this.recordOutput({ name, description, type, val, tool: this });
+	protected makeBooleanOutput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanOutput => this.recordOutput({ name, description, type: 'boolean', val, labels, tool: this });
+	protected makeNumberOutput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberOutput => this.recordOutput({ name, description, type: 'number', val, min, max, tool: this });
+	protected makeEnumOutput = (name: string, description: string, val: string, options: string[]): EnumOutput => this.recordOutput({ name, description, type: 'enum', val, options, tool: this });
+}
+
+// Abstract interface for a tool that passes its input through to its output
+export class PassthroughTool extends ToolInst {
+	private inp: Input = this.makeNumberInput('inp', 'Input');
+	private type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean' ]);
+	private out: Output = this.makeNumberOutput('out', 'Output');
+
+	protected onInputSet(input: Input, oldVal: string | number | boolean) {
+		if(input === this.type) {
+			this.inp.type = this.out.type = this.type.val as 'string' | 'number' | 'boolean';
+			this.inp.val = convertToInputType(this.inp.val, this.inp);
+		}
+	}
+
+	async runImpl() {
+		this.out.val = this.inp.val;
 	}
 }
 
@@ -334,7 +422,7 @@ export class ToolManager {
 			error: undefined,
 			upToDate: false,
 		};
-		this.setInputIndirect(input);
+		this.propagateInputVal(input);
 		this.updateData(input);
 	}
 
@@ -350,23 +438,14 @@ export class ToolManager {
 		}
 	}
 
-	setInput(input: Input, val: string | boolean | number) {
-		input.tool.setInput(input, val);
+	setInputVal(input: Input, val: IOValTypes) {
+		input.tool.setInputVal(input, val);
 		this.updateData(input);
 	}
 
-	//TODO It's weird that setInput delegates to the input but setInputIndirect mutates input.val itself
-	setInputIndirect(input: Input) {
-		if(input.connection === undefined) {
-			throw new Error(`Input ${input.tool.name}.${input.name} is unbound`);
-		}
-		const output = input.connection.output;
-		try {
-			input.val = convertToInputType(output.val, input);
-			input.connection!.upToDate = true;
-		} catch(e) {
-			input.connection!.error = `Unable to convert ${output.type} ${output.tool.name}.${output.name} to ${input.type} ${input.tool.name}.${input.name}: ${e.message}`;
-		}
+	propagateInputVal(input: Input) {
+		input.tool.propagateInputVal(input);
+		this.updateData(input);
 	}
 
 	*iterErrors(): Iterable<ToolError> {
@@ -461,7 +540,7 @@ export class ToolManager {
 								console.log(`    Setting ${output.name}`);
 								for(const input of connections.get(output)) {
 									console.log(`      Connected to ${input.name}`);
-									this.setInputIndirect(input);
+									input.tool.propagateInputVal(input);
 									if(input.connection!.error !== undefined) {
 										input.tool.state = ToolState.badInputs;
 									}
@@ -533,7 +612,7 @@ export class ToolManager {
 				if(input === undefined) {
 					throw new Error(`Unknown input: ${tool.name}.${name}`);
 				}
-				inst.setInput(input, val);
+				inst.setInputVal(input, val);
 			}
 		}
 

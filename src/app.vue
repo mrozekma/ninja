@@ -78,7 +78,11 @@
 					</split-grid-area>
 					<split-grid-gutter/>
 					<split-grid-area class="col scroll" size-unit="fr" :size-value="2">
-						<h1>Outputs</h1>
+						<h1>
+							Outputs
+							<!-- TODO Pending indicator -->
+							<div v-if="toolManager.selectedTool && toolManager.selectedTool.state == 'running'" class="spinner"></div>
+						</h1>
 						<div>
 							<output-view></output-view>
 						</div>

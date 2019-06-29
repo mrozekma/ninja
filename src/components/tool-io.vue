@@ -37,7 +37,7 @@
 </template>
 
 <script lang="ts">
-	import { Input } from '@/tools';
+	import { Input, IOValTypes } from '@/tools';
 
 	import Vue, { PropType } from 'vue';
 	export default Vue.extend({
@@ -67,14 +67,13 @@
 			},
 		},
 		methods: {
-			set(input: Input, value: any) {
-				this.toolManager.setInput(input, value);
+			set(input: Input, value: IOValTypes) {
+				this.toolManager.setInputVal(input, value);
 			},
 			scaleText(e: Event) {
-				console.log(this.$el);
-				//   this.style.height = 'auto';
-//   this.style.height = (this.scrollHeight) + 'px';
-			}
+				//TODO
+				// console.log(this.$el);
+			},
 		},
 	});
 </script>

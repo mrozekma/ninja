@@ -3,47 +3,19 @@ import { makeDef, ToolInst, Input, Output, ToolDef } from '@/tools';
 import { Base64 } from 'js-base64';
 
 class Base64Tool extends ToolInst {
-	private inp: Input<string> = {
-		tool: this,
-		name: 'in',
-		description: '',
-		type: 'text',
-		val: '',
-		connection: undefined,
-	};
-
-	private dir: Input<boolean> = new Proxy({
-		tool: this,
-		name: 'dir',
-		description: 'Direction',
-		type: 'boolean',
-		labels: [ 'Encode', 'Decode' ],
-		val: true,
-		connection: undefined,
-	}, {
-		set: (inp, k, v) => {
-			const rtn = Reflect.set(inp, k, v);
-			if(k == 'val') {
-				this.updateDescriptions();
-			}
-			return rtn;
-		},
-	});
-
-	private out: Output<string> = {
-		tool: this,
-		name: 'out',
-		description: '',
-		type: 'text',
-		val: '',
-	};
-
-	readonly inputs: Input[] = [ this.inp, this.dir ];
-	readonly outputs: Output[] = [ this.out ];
+	private inp = this.makeStringInput('in', '', 'text');
+	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Encode', 'Decode' ]);
+	private out = this.makeStringOutput('out', '', 'text');
 
 	constructor(def: ToolDef, name: string) {
 		super(def, name);
 		this.updateDescriptions();
+	}
+
+	protected onInputSet(input: Input, oldVal: string | number | boolean) {
+		if(input === this.dir) {
+			this.updateDescriptions();
+		}
 	}
 
 	private updateDescriptions() {

@@ -23,7 +23,7 @@
 	export default Vue.extend({
 		components: { ToolIo: ToolIOComponent },
 		computed: {
-			outputs(): Output[] {
+			outputs(): Readonly<Output[]> {
 				const tool = this.toolManager.selectedTool;
 				return tool ? tool.outputs : [];
 			},
@@ -34,7 +34,6 @@
 				}
 				switch(tool.state) {
 					case ToolState.good: return undefined;
-					case ToolState.running: return { type: 'is-info', text: "Running..." };
 					case ToolState.badInputs: return { type: 'is-danger', text: "Invalid inputs prevented this tool from running." };
 					case ToolState.failed: return { type: 'is-danger', text: `This tool failed to run: ${tool.error}.` };
 					case ToolState.cycle: return { type: 'is-warning', text: "A circular dependency prevented this tool from running." };

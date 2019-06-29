@@ -27,7 +27,7 @@
 	export default Vue.extend({
 		components: { ToolIo: ToolIOComponent },
 		computed: {
-			inputs(): Input[] {
+			inputs(): Readonly<Input[]> {
 				const tool = this.toolManager.selectedTool;
 				return tool ? tool.inputs : [];
 			},

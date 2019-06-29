@@ -1,36 +1,14 @@
-import { makeDef, ToolInst, Input, Output, ToolDef } from '@/tools';
+import { makeDef, ToolInst, Input, Output, ToolDef, StringOutput } from '@/tools';
 
 const MAX_PIECES = 5;
 class TextSplit extends ToolInst {
-	private inp: Input<string> = {
-		tool: this,
-		name: 'in',
-		description: "Input",
-		type: 'text',
-		val: '',
-		connection: undefined,
-	};
+	private inp = this.makeStringInput('in', 'Input', 'text');
+	private split = this.makeStringInput('on', 'Split');
 
-	private split: Input<string> = {
-		tool: this,
-		name: 'on',
-		description: "Split",
-		type: 'string',
-		val: ',',
-		connection: undefined,
-	};
-
-	private numOuts = 5;
 	// There's a max number of outputs, but not all of these are necessarily used
-	private outs: Output<string>[] = Array.from({length: MAX_PIECES}, (_, idx): Output<string> => ({
-		tool: this,
-		name: `out${idx + 1}`,
-		description: `Piece #${idx + 1}`,
-		type: 'string',
-		val: '',
-	}));
+	private numOuts = 5;
+	private outs = Array.from({length: MAX_PIECES}, (_, idx) => this.makeStringOutput(`out${idx + 1}`, `Piece #${idx + 1}`));
 
-	readonly inputs: Input[] = [ this.inp, this.split ];
 	get outputs(): Output[] {
 		return this.outs.slice(0, this.numOuts);
 	}
