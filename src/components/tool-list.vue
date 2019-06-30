@@ -17,8 +17,7 @@
 <script lang="ts">
 	//TODO Search
 	//TODO Expand/collapse animation
-	import toolGroups from '@/tools/groups';
-	import { ToolGroup } from '@/types';
+	import toolGroups, { ToolGroup } from '@/tools/groups';
 	import { ToolDef } from '@/tools';
 
 	interface ToolGroupGUI extends ToolGroup {

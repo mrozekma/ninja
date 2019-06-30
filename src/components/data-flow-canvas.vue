@@ -5,9 +5,7 @@
 </template>
 
 <script lang="ts">
-	//TODO Autolayout: https://github.com/dagrejs/dagre/wiki https://www.npmjs.com/package/elkjs
-	import { Point, isPoint } from '@/types';
-	import { ToolInst, ToolState, Input, Output } from '@/tools'
+	import { ToolInst, ToolState, Input, Output, Point, isPoint } from '@/tools'
 
 	import dagre from 'dagre';
 

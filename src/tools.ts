@@ -1,4 +1,3 @@
-import { Point } from './types';
 import importSchema, { Tools as ImportedData } from './tools.schema';
 
 import { Base64 } from 'js-base64';
@@ -139,6 +138,15 @@ export function convertToInputType(val: IOValTypes, input: Input): IOValTypes {
 			}
 			return rtn; }
 	}
+}
+
+export interface Point {
+	x: number;
+	y: number;
+}
+
+export function isPoint(pt: any): pt is Point {
+	return pt.x !== undefined && pt.y !== undefined;
 }
 
 export enum ToolState { stale = 'stale', running = 'running', good = 'good', badInputs = 'bad-inputs', failed = 'failed', cycle = 'cycle' }

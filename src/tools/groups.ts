@@ -1,4 +1,10 @@
-import { ToolGroup } from '@/types';
+import { ToolDef } from '@/tools';
+
+export interface ToolGroup {
+	name: string;
+	icon: string;
+	tools: ToolDef[];
+}
 
 import test from '@/tools/test';
 import text from '@/tools/text';
