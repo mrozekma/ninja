@@ -34,9 +34,7 @@ interface OutputMixin {
 	tool: ToolInst;
 	name: string;
 	description: string;
-	watch: {
-		format?: string,
-	} | undefined;
+	watch: boolean;
 }
 
 // An input is just like an output but with an extra field to track if it's connected to another tool's output
@@ -290,15 +288,15 @@ export abstract class ToolInst {
 	}
 
 	// These make me so sad. See the above comment about generic Input<T>/Output<T>
-	protected makeStringInput = (name: string, description: string, val: string = ''): StringInput => this.recordInput({ name, description, type: 'string', val, io: 'input', tool: this, connection: undefined, watch: undefined });
-	protected makeBooleanInput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanInput => this.recordInput({ name, description, type: 'boolean', val, labels, io: 'input', tool: this, connection: undefined, watch: undefined });
-	protected makeNumberInput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberInput => this.recordInput({ name, description, type: 'number', val, min, max, io: 'input', tool: this, connection: undefined, watch: undefined });
-	protected makeEnumInput = (name: string, description: string, val: string, options: string[]): EnumInput => this.recordInput({ name, description, type: 'enum', val, options, io: 'input', tool: this, connection: undefined, watch: undefined });
+	protected makeStringInput = (name: string, description: string, val: string = ''): StringInput => this.recordInput({ name, description, type: 'string', val, io: 'input', tool: this, connection: undefined, watch: false });
+	protected makeBooleanInput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanInput => this.recordInput({ name, description, type: 'boolean', val, labels, io: 'input', tool: this, connection: undefined, watch: false });
+	protected makeNumberInput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberInput => this.recordInput({ name, description, type: 'number', val, min, max, io: 'input', tool: this, connection: undefined, watch: false });
+	protected makeEnumInput = (name: string, description: string, val: string, options: string[]): EnumInput => this.recordInput({ name, description, type: 'enum', val, options, io: 'input', tool: this, connection: undefined, watch: false });
 
-	protected makeStringOutput = (name: string, description: string, val: string = ''): StringOutput => this.recordOutput({ name, description, type: 'string', val, io: 'output', tool: this, watch: undefined });
-	protected makeBooleanOutput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanOutput => this.recordOutput({ name, description, type: 'boolean', val, labels, io: 'output', tool: this, watch: undefined });
-	protected makeNumberOutput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberOutput => this.recordOutput({ name, description, type: 'number', val, min, max, io: 'output', tool: this, watch: undefined });
-	protected makeEnumOutput = (name: string, description: string, val: string, options: string[]): EnumOutput => this.recordOutput({ name, description, type: 'enum', val, options, io: 'output', tool: this, watch: undefined });
+	protected makeStringOutput = (name: string, description: string, val: string = ''): StringOutput => this.recordOutput({ name, description, type: 'string', val, io: 'output', tool: this, watch: false });
+	protected makeBooleanOutput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanOutput => this.recordOutput({ name, description, type: 'boolean', val, labels, io: 'output', tool: this, watch: false });
+	protected makeNumberOutput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberOutput => this.recordOutput({ name, description, type: 'number', val, min, max, io: 'output', tool: this, watch: false });
+	protected makeEnumOutput = (name: string, description: string, val: string, options: string[]): EnumOutput => this.recordOutput({ name, description, type: 'enum', val, options, io: 'output', tool: this, watch: false });
 }
 
 // Abstract interface for a tool that passes its input through to its output
@@ -490,16 +488,29 @@ export class ToolManager {
 		}
 	}
 
-	*iterWatches(): Iterable<Input | Output> {
+	*iterWatches(includeDanglingOutputs: boolean): Iterable<Input | Output> {
+		const connected = new Set<Output>();
 		for(const tool of this.tools) {
 			for(const input of tool.inputs) {
 				if(input.watch) {
 					yield input;
 				}
+				if(input.connection !== undefined) {
+					connected.add(input.connection.output);
+				}
 			}
 			for(const output of tool.outputs) {
 				if(output.watch) {
 					yield output;
+				}
+			}
+		}
+		if(includeDanglingOutputs) {
+			for(const tool of this.tools) {
+				for(const output of tool.outputs) {
+					if(!output.watch && !connected.has(output)) {
+						yield output;
+					}
 				}
 			}
 		}

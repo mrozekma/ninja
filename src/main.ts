@@ -1,30 +1,36 @@
-import { ToolManager, ToolInst } from '@/tools';
+import { ToolManager } from '@/tools';
+import settings, { Settings } from '@/settings';
 
 import Vue from 'vue';
 import App from './app.vue';
 
 Vue.config.productionTip = false;
 
-// Add a 'toolManager' prop on every component
+// Add 'toolManager' and 'settings' props on every component
 const toolManager = new ToolManager();
 Vue.mixin({
 	computed: {
 		toolManager(): ToolManager {
 			return toolManager;
-		}
+		},
+		settings(): Settings {
+			return settings;
+		},
 	},
 });
 
 declare module "vue/types/vue" {
 	interface Vue {
 		toolManager: ToolManager;
+		settings: Settings;
 	}
 }
 
 new Vue({
 	render: h => h(App),
 	data: {
-		// Including toolManager in the root's data object makes it reactive
+		// Including these in the root's data object makes them reactive
 		rootToolManager: toolManager,
+		rootSettings: settings,
 	},
 }).$mount('#app');

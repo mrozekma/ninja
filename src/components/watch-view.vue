@@ -5,7 +5,7 @@
 				<span class="clickable" @click="selectTool(io.tool)">{{ io.tool.name }}.{{ io.name }}</span>
 				<b-tag v-if="io.io == 'input'" type="is-primary"><i class="fas fa-sign-in-alt"></i> Input</b-tag>
 				<b-tag v-else-if="io.io == 'output'" type="is-primary"><i class="fas fa-sign-out-alt"></i> Output</b-tag>
-				<span class="clickable" @click="io.watch = undefined"><b-tag type="is-primary"><i class="fas fa-eye-slash"></i></b-tag></span>
+				<span class="clickable" @click="io.watch = false"><b-tag type="is-primary"><i class="fas fa-eye-slash"></i></b-tag></span>
 			</template>
 			<tool-io :io="io" :renderAsWatch="true"></tool-io>
 		</b-field>

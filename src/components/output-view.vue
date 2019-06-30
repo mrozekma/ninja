@@ -6,16 +6,16 @@
 		<b-field v-for="output in outputs" :key="output.name" :class="{wide: (output.type == 'string')}">
 			<template slot="label">
 				{{ output.description }}
-				<b-tag v-if="output.watch === undefined" type="is-primary">{{ output.name }}</b-tag>
-				<span v-else @click="clearWatch(output)">
+				<b-tag v-if="!output.watch" type="is-primary">{{ output.name }}</b-tag>
+				<span v-else @click="output.watch = false">
 					<b-tag class="is-watched clickable"><i class="fas fa-eye"></i> {{ output.name }}</b-tag>
 				</span>
 				<b-dropdown>
 					<b-tag slot="trigger" type="is-primary" class="clickable">
 						<i class="fas fa-caret-down"></i>
 					</b-tag>
-					<b-dropdown-item v-if="output.watch === undefined" @click="setWatch(output)"><i class="fas fa-eye"></i> Watch</b-dropdown-item>
-					<b-dropdown-item v-else @click="clearWatch(output)"><i class="fas fa-eye-slash"></i> Unwatch</b-dropdown-item>
+					<b-dropdown-item v-if="!output.watch" @click="output.watch = true"><i class="fas fa-eye"></i> Watch</b-dropdown-item>
+					<b-dropdown-item v-else @click="output.watch = false"><i class="fas fa-eye-slash"></i> Unwatch</b-dropdown-item>
 				</b-dropdown>
 			</template>
 			<tool-io :io="output"></tool-io>
@@ -49,16 +49,6 @@
 					case ToolState.failed: return { type: 'is-danger', text: `This tool failed to run: ${tool.error}.` };
 					case ToolState.cycle: return { type: 'is-warning', text: "A circular dependency prevented this tool from running." };
 				}
-			},
-		},
-		methods: {
-			setWatch(output: Output) {
-				output.watch = {
-					format: undefined,
-				};
-			},
-			clearWatch(output: Output) {
-				output.watch = undefined;
 			},
 		},
 	});

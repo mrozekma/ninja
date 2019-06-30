@@ -33,6 +33,9 @@
 				<b-tooltip label="Run All" position="is-bottom">
 					<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="runAll"><i class="fas fa-play-circle"></i></a>
 				</b-tooltip>
+				<b-tooltip label="Settings" position="is-bottom">
+					<a class="navbar-item navbar-toolbar-item" @click="showSettingsDialog = true"><i class="fas fa-cog"></i></a>
+				</b-tooltip>
 			</div>
 			<div class="navbar-end">
 				<b-tooltip v-if="running" label="Running..." position="is-bottom">
@@ -58,6 +61,9 @@
 		</b-modal>
 		<b-modal :active.sync="showSaveDialog" has-modal-card>
 			<save-dialog @save="doSave"></save-dialog>
+		</b-modal>
+		<b-modal :active.sync="showSettingsDialog" has-modal-card>
+			<settings-dialog></settings-dialog>
 		</b-modal>
 
 		<split-grid direction="column" :gutter-size="3" class="main-grid" @drag-start="data => gridDragStart('main', data.direction, data.track)" @drag-end="data => gridDragEnd('main', data.direction, data.track)">
@@ -99,7 +105,7 @@
 						<h1>
 							Routing
 							<div style="margin-right: 10px">
-								<b-tooltip v-if="anyTools" label="Auto-layout" position="is-bottom">
+								<b-tooltip v-if="anyTools && !settings.autoLayout" label="Auto-layout" position="is-bottom">
 									<i class="fas fa-project-diagram" @click="$refs.dfcanvas.autoLayout()"></i>
 								</b-tooltip>
 							</div>
@@ -159,6 +165,7 @@
 	import AboutDialog from './components/about-dialog.vue';
 	import LoadStringDialog from './components/load-string-dialog.vue';
 	import SaveDialog from './components/save-dialog.vue';
+	import SettingsDialog from './components/settings-dialog.vue';
 	import ToolList from './components/tool-list.vue';
 	import PropertyView from './components/property-view.vue';
 	import OutputView from './components/output-view.vue';
@@ -168,7 +175,8 @@
 	export default Vue.extend({
 		components: {
 			SplitGrid, SplitGridArea, SplitGridGutter,
-			AboutDialog, LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, WatchView, ErrorsView, DataFlowCanvas,
+			AboutDialog, LoadStringDialog, SaveDialog, SettingsDialog,
+			ToolList, PropertyView, OutputView, WatchView, ErrorsView, DataFlowCanvas,
 		},
 		computed: {
 			anyTools(): boolean {
@@ -178,7 +186,7 @@
 				return this.toolManager.tools.some(tool => tool.state == ToolState.running);
 			},
 			watched(): (Input | Output)[] {
-				return Array.from(this.toolManager.iterWatches());
+				return Array.from(this.toolManager.iterWatches(this.settings.autoWatch));
 			},
 			errors(): ToolError[] {
 				return Array.from(this.toolManager.iterErrors());
@@ -187,12 +195,11 @@
 		data() {
 			return {
 				showWatchPanel: false,
-				autoWatchPanel: true, // Automatically enable showWatchPanel when a new watch is added
 				showErrorsPanel: false,
-				autoErrorsPanel: true, // Automatically toggle showErrorsPanel based on the number of errors
 				showAboutDialog: false,
 				showLoadStringDialog: false,
 				showSaveDialog: false,
+				showSettingsDialog: false,
 				savedScripts: [] as string[],
 			};
 		},
@@ -206,12 +213,12 @@
 				this.$refs.dfcanvas.shrinkOneTick();
 			},
 			errors(val: ToolError[]) {
-				if(this.autoErrorsPanel) {
+				if(this.settings.autoToggleErrors) {
 					this.showErrorsPanel = (val.length > 0);
 				}
 			},
 			watched(newVal: (Input | Output)[], oldVal: (Input | Output)[]) {
-				if(this.autoWatchPanel && newVal.length > oldVal.length) {
+				if(this.settings.autoOpenWatch && newVal.length > oldVal.length) {
 					this.showWatchPanel = true;
 				}
 			},

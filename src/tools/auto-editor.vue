@@ -3,8 +3,8 @@
 		<b-field v-for="input in inputs" :key="input.name" :class="{wide: (input.type == 'string'), 'is-loading': !!(input.connection && !input.connection.upToDate)}">
 			<template slot="label">
 				{{ input.description }}
-				<b-tag v-if="input.watch === undefined" type="is-primary">{{ input.name }}</b-tag>
-				<span v-else @click="clearWatch(input)">
+				<b-tag v-if="!input.watch" type="is-primary">{{ input.name }}</b-tag>
+				<span v-else @click="input.watch = false">
 					<b-tag class="is-watched clickable"><i class="fas fa-eye"></i> {{ input.name }}</b-tag>
 				</span>
 				<span v-if="input.connection" class="clickable" @click="disconnect(input)">
@@ -19,8 +19,8 @@
 					</b-tag>
 					<b-dropdown-item v-if="input.connection === undefined" @click="connect(input)"><i class="fas fa-link"></i> Connect</b-dropdown-item>
 					<b-dropdown-item v-else @click="disconnect(input)"><i class="fas fa-unlink"></i> Disconnect</b-dropdown-item>
-					<b-dropdown-item v-if="input.watch === undefined" @click="setWatch(input)"><i class="fas fa-eye"></i> Watch</b-dropdown-item>
-					<b-dropdown-item v-else @click="clearWatch(input)"><i class="fas fa-eye-slash"></i> Unwatch</b-dropdown-item>
+					<b-dropdown-item v-if="!input.watch" @click="input.watch = true"><i class="fas fa-eye"></i> Watch</b-dropdown-item>
+					<b-dropdown-item v-else @click="input.watch = false"><i class="fas fa-eye-slash"></i> Unwatch</b-dropdown-item>
 				</b-dropdown>
 			</template>
 			<b-message v-if="input.connection && input.connection.error" type="is-danger">
@@ -50,14 +50,6 @@
 			},
 			disconnect(input: Input) {
 				this.toolManager.disconnect(input);
-			},
-			setWatch(input: Input) {
-				input.watch = {
-					format: undefined,
-				};
-			},
-			clearWatch(input: Input) {
-				input.watch = undefined;
 			},
 		},
 	});

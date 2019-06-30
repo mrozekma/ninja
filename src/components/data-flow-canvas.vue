@@ -1,5 +1,5 @@
 <template>
-	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown.left="mousedown" @mouseup.left="mouseup" @click.middle="middleclick" @wheel="wheel">
+	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown.left="mousedown" @mouseup.left="mouseup" @click.middle="middleclick" @wheel.prevent="wheel">
 		{{ canvas }}
 	</canvas>
 </template>
@@ -93,7 +93,7 @@
 				switch(this.mouse.state) {
 					case 'over-tool':
 					case 'dragging-tool':
-						return 'move';
+						return this.settings.autoLayout ? 'default' : 'move';
 					case 'over-connector':
 						return 'pointer';
 					default:
@@ -101,6 +101,9 @@
 				}
 			},
 			layout(): ToolLayout[] {
+				if(this.settings.autoLayout) {
+					this.autoLayout();
+				}
 				return this.toolManager.tools.map(this.layoutTool);
 			},
 		},
@@ -167,6 +170,9 @@
 
 			grow() {
 				this.setupCanvas();
+				if(this.settings.autoLayout) {
+					this.autoLayout();
+				}
 			},
 
 			async shrinkOneTick() {
@@ -594,7 +600,9 @@
 						}
 						break;
 					case 'over-tool':
-						this.mouse.state = 'dragging-tool';
+						if(!this.settings.autoLayout) {
+							this.mouse.state = 'dragging-tool';
+						}
 						this.toolManager.selectedTool = this.mouse.tool;
 						break;
 					case 'over-connector':

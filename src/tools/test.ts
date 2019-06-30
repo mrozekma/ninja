@@ -16,18 +16,18 @@ class AddTool extends ToolInst {
 
 class FormTestTool extends ToolInst {
 	readonly inputs: Input[] = [
-		{ io: 'input', tool: this, name: 'string', description: "String input", type: 'string', val: 'string', connection: undefined, watch: undefined },
-		// { io: 'input', tool: this, name: 'text', description: "Text input", type: 'text', val: 'text', connection: undefined, watch: undefined },
-		{ io: 'input', tool: this, name: 'number', description: "Number input", type: 'number', val: 10, min: 5, max: 15, connection: undefined, watch: undefined },
-		{ io: 'input', tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true, connection: undefined, watch: undefined },
-		{ io: 'input', tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar', connection: undefined, watch: undefined },
+		{ io: 'input', tool: this, name: 'string', description: "String input", type: 'string', val: 'string', connection: undefined, watch: false },
+		// { io: 'input', tool: this, name: 'text', description: "Text input", type: 'text', val: 'text', connection: undefined, watch: false },
+		{ io: 'input', tool: this, name: 'number', description: "Number input", type: 'number', val: 10, min: 5, max: 15, connection: undefined, watch: false },
+		{ io: 'input', tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true, connection: undefined, watch: false },
+		{ io: 'input', tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar', connection: undefined, watch: false },
 	];
 	readonly outputs: Output[] = [
-		{ io: 'output', tool: this, name: 'string', description: "String input", type: 'string', val: 'string', watch: undefined },
-		// { io: 'output', tool: this, name: 'text', description: "Text input", type: 'text', val: 'text', watch: undefined },
-		{ io: 'output', tool: this, name: 'number', description: "Number input", type: 'number', val: 10, watch: undefined },
-		{ io: 'output', tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true, watch: undefined },
-		{ io: 'output', tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar', watch: undefined },
+		{ io: 'output', tool: this, name: 'string', description: "String input", type: 'string', val: 'string', watch: false },
+		// { io: 'output', tool: this, name: 'text', description: "Text input", type: 'text', val: 'text', watch: false },
+		{ io: 'output', tool: this, name: 'number', description: "Number input", type: 'number', val: 10, watch: false },
+		{ io: 'output', tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true, watch: false },
+		{ io: 'output', tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar', watch: false },
 	];
 
 	async runImpl() {
