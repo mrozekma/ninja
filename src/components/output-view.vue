@@ -3,12 +3,22 @@
 		{{ message.text }}
 	</b-message>
 	<fieldset v-else class="form" disabled>
-		<b-field v-for="output in outputs" :key="output.name" :class="{wide: (output.type == 'text')}">
+		<b-field v-for="output in outputs" :key="output.name" :class="{wide: (output.type == 'string')}">
 			<template slot="label">
 				{{ output.description }}
-				<b-tag type="is-primary">{{ output.name }}</b-tag>
+				<b-tag v-if="output.watch === undefined" type="is-primary">{{ output.name }}</b-tag>
+				<span v-else @click="clearWatch(output)">
+					<b-tag class="is-watched clickable"><i class="fas fa-eye"></i> {{ output.name }}</b-tag>
+				</span>
+				<b-dropdown>
+					<b-tag slot="trigger" type="is-primary" class="clickable">
+						<i class="fas fa-caret-down"></i>
+					</b-tag>
+					<b-dropdown-item v-if="output.watch === undefined" @click="setWatch(output)"><i class="fas fa-eye"></i> Watch</b-dropdown-item>
+					<b-dropdown-item v-else @click="clearWatch(output)"><i class="fas fa-eye-slash"></i> Unwatch</b-dropdown-item>
+				</b-dropdown>
 			</template>
-			<tool-io :input="output"></tool-io>
+			<tool-io :io="output"></tool-io>
 		</b-field>
 	</fieldset>
 </template>
@@ -34,10 +44,21 @@
 				}
 				switch(tool.state) {
 					case ToolState.good: return undefined;
+					case ToolState.stale: return { type: 'is-info', text: "Pending..." }; //TODO Remove once the pending indicator is in the panel <h1>
 					case ToolState.badInputs: return { type: 'is-danger', text: "Invalid inputs prevented this tool from running." };
 					case ToolState.failed: return { type: 'is-danger', text: `This tool failed to run: ${tool.error}.` };
 					case ToolState.cycle: return { type: 'is-warning', text: "A circular dependency prevented this tool from running." };
 				}
+			},
+		},
+		methods: {
+			setWatch(output: Output) {
+				output.watch = {
+					format: undefined,
+				};
+			},
+			clearWatch(output: Output) {
+				output.watch = undefined;
 			},
 		},
 	});
@@ -48,7 +69,7 @@
 		margin: 10px;
 	}
 
-.form {
+	.form {
 		display: flex;
 		flex-wrap: wrap;
 
@@ -64,5 +85,18 @@
 				flex: 1 0 calc(100% - 20px);
 			}
 		}
+	}
+
+	.clickable {
+		cursor: pointer;
+	}
+
+	.is-watched {
+		color: #fff;
+		background-color: #714dd2;
+	}
+
+	.dropdown-content i {
+		margin-right: 2px;
 	}
 </style>

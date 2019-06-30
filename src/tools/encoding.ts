@@ -3,9 +3,9 @@ import { makeDef, ToolInst, Input, Output, ToolDef } from '@/tools';
 import { Base64 } from 'js-base64';
 
 class Base64Tool extends ToolInst {
-	private inp = this.makeStringInput('in', '', 'text');
+	private inp = this.makeStringInput('in', '');
 	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Encode', 'Decode' ]);
-	private out = this.makeStringOutput('out', '', 'text');
+	private out = this.makeStringOutput('out', '');
 
 	constructor(def: ToolDef, name: string) {
 		super(def, name);

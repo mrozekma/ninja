@@ -40,8 +40,11 @@
 						<div class="spinner"></div>
 					</div>
 				</b-tooltip>
+				<b-tooltip v-if="watched.length > 0" :label="showWatchPanel ? 'Hide Watch' : 'Show Watch'" position="is-bottom">
+					<a class="navbar-item navbar-toolbar-item" @click="showWatchPanel = !showWatchPanel"><i class="fas fa-eye"></i><span>{{ watched.length }}</span></a>
+				</b-tooltip>
 				<b-tooltip v-if="errors.length > 0" :label="showErrorsPanel ? 'Hide Errors' : 'Show Errors'" position="is-bottom">
-					<a class="navbar-item navbar-toolbar-item" @click="showErrorsPanel = !showErrorsPanel"><i class="fas fa-exclamation-triangle"></i><span>{{ errors.length }}</span></a>
+					<a class="navbar-item navbar-toolbar-item" @click="showErrorsPanel = !showErrorsPanel; autoErrorsPanel = false"><i class="fas fa-exclamation-triangle"></i><span>{{ errors.length }}</span></a>
 				</b-tooltip>
 			</div>
 		</nav>
@@ -96,11 +99,21 @@
 						<h1>Routing</h1>
 						<data-flow-canvas ref="dfcanvas"></data-flow-canvas>
 					</split-grid-area>
+					<split-grid-gutter :show="showWatchPanel"/>
+					<split-grid-area :show="showWatchPanel" class="col scroll" size-unit="px" :size-value="250">
+						<h1>
+							Watch
+							<i class="fas fa-window-close" @click="showWatchPanel = false"></i>
+						</h1>
+						<div>
+							<watch-view :watched="watched"></watch-view>
+						</div>
+					</split-grid-area>
 					<split-grid-gutter :show="showErrorsPanel"/>
 					<split-grid-area :show="showErrorsPanel" class="col scroll" size-unit="px" :size-value="250">
 						<h1>
 							Errors
-							<i class="fas fa-window-close" @click="showErrorsPanel = false"></i>
+							<i class="fas fa-window-close" @click="showErrorsPanel = false; autoErrorsPanel = false"></i>
 						</h1>
 						<div>
 							<errors-view :errors="errors"></errors-view>
@@ -131,7 +144,7 @@
 	import { saveAs } from 'file-saver';
 	import * as clipboard from 'clipboard-polyfill';
 
-	import { ToolInst, ToolError, ToolState } from './tools';
+	import { ToolInst, ToolError, ToolState, Input, Output } from './tools';
 	import toolGroups from './tools/groups';
 
 	//@ts-ignore No declaration file
@@ -142,12 +155,13 @@
 	import ToolList from './components/tool-list.vue';
 	import PropertyView from './components/property-view.vue';
 	import OutputView from './components/output-view.vue';
+	import WatchView from './components/watch-view.vue';
 	import ErrorsView from './components/errors-view.vue';
 	import DataFlowCanvas from './components/data-flow-canvas.vue';
 	export default Vue.extend({
 		components: {
 			SplitGrid, SplitGridArea, SplitGridGutter,
-			AboutDialog, LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, ErrorsView, DataFlowCanvas,
+			AboutDialog, LoadStringDialog, SaveDialog, ToolList, PropertyView, OutputView, WatchView, ErrorsView, DataFlowCanvas,
 		},
 		computed: {
 			anyTools(): boolean {
@@ -156,13 +170,19 @@
 			running(): boolean {
 				return this.toolManager.tools.some(tool => tool.state == ToolState.running);
 			},
+			watched(): (Input | Output)[] {
+				return Array.from(this.toolManager.iterWatches());
+			},
 			errors(): ToolError[] {
 				return Array.from(this.toolManager.iterErrors());
 			},
 		},
 		data() {
 			return {
+				showWatchPanel: false,
+				autoWatchPanel: true, // Automatically enable showWatchPanel when a new watch is added
 				showErrorsPanel: false,
+				autoErrorsPanel: true, // Automatically toggle showErrorsPanel based on the number of errors
 				showAboutDialog: false,
 				showLoadStringDialog: false,
 				showSaveDialog: false,
@@ -170,17 +190,22 @@
 			};
 		},
 		watch: {
-			async showErrorsPanel(val: boolean) {
+			showErrorsPanel(val: boolean) {
 				//@ts-ignore
-				this.$refs.dfcanvas.shrink();
-				await this.$nextTick();
+				this.$refs.dfcanvas.shrinkOneTick();
+			},
+			showWatchPanel(val: boolean) {
 				//@ts-ignore
-				this.$refs.dfcanvas.grow();
+				this.$refs.dfcanvas.shrinkOneTick();
 			},
 			errors(val: ToolError[]) {
-				//TODO Likely don't do this, it closes the panel on every rerun
-				if(val.length == 0) {
-					this.showErrorsPanel = false;
+				if(this.autoErrorsPanel) {
+					this.showErrorsPanel = (val.length > 0);
+				}
+			},
+			watched(newVal: (Input | Output)[], oldVal: (Input | Output)[]) {
+				if(this.autoWatchPanel && newVal.length > oldVal.length) {
+					this.showWatchPanel = true;
 				}
 			},
 		},
@@ -460,6 +485,8 @@ $colors: (
 				z-index: 2;
 				i {
 					float: right;
+					position: relative;
+					top: 2px;
 					font-size: 16pt;
 					cursor: pointer;
 				}

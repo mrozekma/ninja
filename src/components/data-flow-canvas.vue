@@ -169,6 +169,12 @@
 				this.setupCanvas();
 			},
 
+			async shrinkOneTick() {
+				this.shrink();
+				await this.$nextTick();
+				this.grow();
+			},
+
 			*layoutConnectors(num: number, edge: Point & { width: number }): IterableIterator<Rect> {
 				// Connectors are 2 * CONNECTOR_RADIUS wide with CONNECTOR_GAP space between them.
 				// These are nonsense if num is 0, but they're also not used

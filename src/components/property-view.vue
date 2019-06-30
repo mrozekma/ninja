@@ -3,9 +3,6 @@
 		<b-message v-if="state.state === 'cycle'" type="is-warning">
 			Some of this tool's inputs are part of a circular dependency, so this tool cannot run.
 		</b-message>
-		<b-message v-else-if="state.state === 'failed'" type="is-danger">
-			This tool failed to run: {{ state.error }}.
-		</b-message>
 		<div class="type-and-name">
 			<b-field v-if="toolManager.selectedTool" label="Name">
 				<b-input :value="toolManager.selectedTool.name" @input="setName($event)"></b-input>

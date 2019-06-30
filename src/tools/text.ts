@@ -2,7 +2,7 @@ import { makeDef, ToolInst, Input, Output, ToolDef, StringOutput } from '@/tools
 
 const MAX_PIECES = 5;
 class TextSplit extends ToolInst {
-	private inp = this.makeStringInput('in', 'Input', 'text');
+	private inp = this.makeStringInput('in', 'Input');
 	private split = this.makeStringInput('on', 'Split');
 
 	// There's a max number of outputs, but not all of these are necessarily used

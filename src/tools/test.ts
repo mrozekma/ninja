@@ -16,18 +16,18 @@ class AddTool extends ToolInst {
 
 class FormTestTool extends ToolInst {
 	readonly inputs: Input[] = [
-		{ tool: this, name: 'string', description: "String input", type: 'string', val: 'string', connection: undefined},
-		{ tool: this, name: 'text', description: "Text input", type: 'text', val: 'text', connection: undefined},
-		{ tool: this, name: 'number', description: "Number input", type: 'number', val: 10, min: 5, max: 15, connection: undefined},
-		{ tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true, connection: undefined},
-		{ tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar', connection: undefined},
+		{ io: 'input', tool: this, name: 'string', description: "String input", type: 'string', val: 'string', connection: undefined, watch: undefined },
+		// { io: 'input', tool: this, name: 'text', description: "Text input", type: 'text', val: 'text', connection: undefined, watch: undefined },
+		{ io: 'input', tool: this, name: 'number', description: "Number input", type: 'number', val: 10, min: 5, max: 15, connection: undefined, watch: undefined },
+		{ io: 'input', tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true, connection: undefined, watch: undefined },
+		{ io: 'input', tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar', connection: undefined, watch: undefined },
 	];
 	readonly outputs: Output[] = [
-		{ tool: this, name: 'string', description: "String input", type: 'string', val: 'string' },
-		{ tool: this, name: 'text', description: "Text input", type: 'text', val: 'text' },
-		{ tool: this, name: 'number', description: "Number input", type: 'number', val: 10 },
-		{ tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true },
-		{ tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar' },
+		{ io: 'output', tool: this, name: 'string', description: "String input", type: 'string', val: 'string', watch: undefined },
+		// { io: 'output', tool: this, name: 'text', description: "Text input", type: 'text', val: 'text', watch: undefined },
+		{ io: 'output', tool: this, name: 'number', description: "Number input", type: 'number', val: 10, watch: undefined },
+		{ io: 'output', tool: this, name: 'boolean', description: "Bool input", type: 'boolean', val: true, watch: undefined },
+		{ io: 'output', tool: this, name: 'enum', description: "Enum input", type: 'enum', options: ['foo', 'bar', 'baz'], val: 'bar', watch: undefined },
 	];
 
 	async runImpl() {
@@ -49,7 +49,7 @@ class SleepTool extends PassthroughTool {
 }
 
 class LipsumTool extends ToolInst {
-	private out = this.makeStringOutput('out', 'Output', 'text', "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed nec porta augue, at vestibulum mauris. Curabitur dapibus auctor eros, sed auctor justo suscipit eget. Pellentesque tellus dolor, vehicula ut urna ut, viverra ultrices lectus. Praesent convallis diam quis augue consequat, eu volutpat justo posuere. Donec eu ligula arcu. Morbi in neque in nulla placerat rutrum. Vestibulum eu mauris vel tortor finibus molestie quis quis dolor. Donec bibendum, tellus eget aliquet posuere, diam diam egestas augue, vel vehicula mauris magna nec nisl. Aenean ipsum ex, interdum eget risus nec, commodo dictum nisl. Quisque maximus, metus quis blandit pulvinar, massa nisi pretium libero, sed gravida turpis ligula non arcu. Ut fringilla tempus elementum. Donec sed dapibus nisl. Phasellus maximus, magna tincidunt efficitur sollicitudin, lorem odio aliquet tellus, in elementum tortor lectus ac nisi. Integer id libero fringilla, vestibulum sem et, ultricies augue. Pellentesque lacinia non neque non consequat.");
+	private out = this.makeStringOutput('out', 'Output', "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed nec porta augue, at vestibulum mauris. Curabitur dapibus auctor eros, sed auctor justo suscipit eget. Pellentesque tellus dolor, vehicula ut urna ut, viverra ultrices lectus. Praesent convallis diam quis augue consequat, eu volutpat justo posuere. Donec eu ligula arcu. Morbi in neque in nulla placerat rutrum. Vestibulum eu mauris vel tortor finibus molestie quis quis dolor. Donec bibendum, tellus eget aliquet posuere, diam diam egestas augue, vel vehicula mauris magna nec nisl. Aenean ipsum ex, interdum eget risus nec, commodo dictum nisl. Quisque maximus, metus quis blandit pulvinar, massa nisi pretium libero, sed gravida turpis ligula non arcu. Ut fringilla tempus elementum. Donec sed dapibus nisl. Phasellus maximus, magna tincidunt efficitur sollicitudin, lorem odio aliquet tellus, in elementum tortor lectus ac nisi. Integer id libero fringilla, vestibulum sem et, ultricies augue. Pellentesque lacinia non neque non consequat.");
 
 	async runImpl() {}
 }

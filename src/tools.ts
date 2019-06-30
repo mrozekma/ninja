@@ -29,19 +29,25 @@ export interface RemoteConnection {
 	error: string | undefined;
 }
 
+//TODO Add bytes type?
 interface OutputMixin {
+	io: 'output',
 	tool: ToolInst;
 	name: string;
 	description: string;
+	watch: {
+		format?: string,
+	} | undefined;
 }
 
 // An input is just like an output but with an extra field to track if it's connected to another tool's output
-interface InputMixin extends OutputMixin {
+type InputMixin = Omit<OutputMixin, 'io'> & {
+	io: 'input',
 	connection: RemoteConnection | undefined; // This is mandatory (i.e. not "connection?: RemoteConnection") so that Vue has a chance to attach a setter
 }
 
 interface StringMixin {
-	type: 'string' | 'text';
+	type: 'string';
 	val: string;
 }
 
@@ -115,7 +121,6 @@ export function convertToNumber(val: IOValTypes): number {
 export function convertToInputType(val: IOValTypes, input: Input): IOValTypes {
 	switch(input.type) {
 		case 'string':
-		case 'text':
 			return convertToString(val);
 		case 'enum': {
 			const rtn = convertToString(val);
@@ -191,7 +196,7 @@ export abstract class ToolInst {
 			throw new Error(`Input ${this.name}.${input.name} is bound to ${input.connection.output.tool.name}.${input.connection.output.name}`);
 		}
 
-		const expectedType = (input.type === 'text' || input.type === 'enum') ? 'string' : input.type;
+		const expectedType = (input.type === 'enum') ? 'string' : input.type;
 		if(expectedType != typeof val) {
 			throw new Error(`Tried to set ${this.name}.${input.name} to a ${typeof val}, but expected a ${expectedType}`);
 		}
@@ -277,15 +282,15 @@ export abstract class ToolInst {
 	}
 
 	// These make me so sad. See the above comment about generic Input<T>/Output<T>
-	protected makeStringInput = (name: string, description: string, type: 'string' | 'text' = 'string', val: string = ''): StringInput => this.recordInput({ name, description, type, val, tool: this, connection: undefined });
-	protected makeBooleanInput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanInput => this.recordInput({ name, description, type: 'boolean', val, labels, tool: this, connection: undefined });
-	protected makeNumberInput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberInput => this.recordInput({ name, description, type: 'number', val, min, max, tool: this, connection: undefined });
-	protected makeEnumInput = (name: string, description: string, val: string, options: string[]): EnumInput => this.recordInput({ name, description, type: 'enum', val, options, tool: this, connection: undefined });
+	protected makeStringInput = (name: string, description: string, val: string = ''): StringInput => this.recordInput({ name, description, type: 'string', val, io: 'input', tool: this, connection: undefined, watch: undefined });
+	protected makeBooleanInput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanInput => this.recordInput({ name, description, type: 'boolean', val, labels, io: 'input', tool: this, connection: undefined, watch: undefined });
+	protected makeNumberInput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberInput => this.recordInput({ name, description, type: 'number', val, min, max, io: 'input', tool: this, connection: undefined, watch: undefined });
+	protected makeEnumInput = (name: string, description: string, val: string, options: string[]): EnumInput => this.recordInput({ name, description, type: 'enum', val, options, io: 'input', tool: this, connection: undefined, watch: undefined });
 
-	protected makeStringOutput = (name: string, description: string, type: 'string' | 'text' = 'string', val: string = ''): StringOutput => this.recordOutput({ name, description, type, val, tool: this });
-	protected makeBooleanOutput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanOutput => this.recordOutput({ name, description, type: 'boolean', val, labels, tool: this });
-	protected makeNumberOutput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberOutput => this.recordOutput({ name, description, type: 'number', val, min, max, tool: this });
-	protected makeEnumOutput = (name: string, description: string, val: string, options: string[]): EnumOutput => this.recordOutput({ name, description, type: 'enum', val, options, tool: this });
+	protected makeStringOutput = (name: string, description: string, val: string = ''): StringOutput => this.recordOutput({ name, description, type: 'string', val, io: 'output', tool: this, watch: undefined });
+	protected makeBooleanOutput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanOutput => this.recordOutput({ name, description, type: 'boolean', val, labels, io: 'output', tool: this, watch: undefined });
+	protected makeNumberOutput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberOutput => this.recordOutput({ name, description, type: 'number', val, min, max, io: 'output', tool: this, watch: undefined });
+	protected makeEnumOutput = (name: string, description: string, val: string, options: string[]): EnumOutput => this.recordOutput({ name, description, type: 'enum', val, options, io: 'output', tool: this, watch: undefined });
 }
 
 // Abstract interface for a tool that passes its input through to its output
@@ -382,7 +387,7 @@ export class ToolManager {
 				return def.name;
 			}
 			for(let i = 2; ; i++) {
-				const name = `${def.name}-${i}`;
+				const name = `${def.name} #${i}`;
 				if(!names.has(name)) {
 					return name;
 				}
@@ -395,6 +400,7 @@ export class ToolManager {
 	}
 
 	removeTool(tool: ToolInst) {
+		const changed = new Set<ToolInst>();
 		let idx: number | undefined = undefined;
 		for(const [seekIdx, seek] of this.tools.entries()) {
 			if(seek === tool) {
@@ -404,6 +410,7 @@ export class ToolManager {
 			for(const input of seek.inputs) {
 				if(input.connection && input.connection.output.tool == tool) {
 					input.connection = undefined;
+					changed.add(seek);
 				}
 			}
 		}
@@ -414,6 +421,9 @@ export class ToolManager {
 			this.selectedTool = undefined;
 		}
 		this._tools.splice(idx, 1);
+		if(changed.size > 0) {
+			this.updateData(...changed);
+		}
 	}
 
 	connect(input: Input, output: Output) {
@@ -472,6 +482,21 @@ export class ToolManager {
 		}
 	}
 
+	*iterWatches(): Iterable<Input | Output> {
+		for(const tool of this.tools) {
+			for(const input of tool.inputs) {
+				if(input.watch) {
+					yield input;
+				}
+			}
+			for(const output of tool.outputs) {
+				if(output.watch) {
+					yield output;
+				}
+			}
+		}
+	}
+
 	private async updateSetRecursively<T>(set: SetWithChangedFlag<T>, updateFn: (set: Set<T>) => void | Promise<void>) {
 		do {
 			set.clearFlag();
@@ -482,23 +507,22 @@ export class ToolManager {
 	private updateId = 0;
 	//TODO It would be nice for this to get called automatically instead of by every spot that updates an input. Investigate RxJS or similar libraries
 	//TODO Remove debug output
-	async updateData(change?: Input | ToolInst) {
+	async updateData(...changes: Readonly<(Input | ToolInst)[]>) {
 		const myId = ++this.updateId;
-		console.log('Update data', myId, change);
+		console.log('Update data', myId, changes);
 
 		// Find every tool affected by this change
-		const outOfDate = new SetWithChangedFlag<ToolInst>((() => {
-			if(change === undefined) {
-				return this.tools;
-			} else if((change as Input).tool) {
-				return [(change as Input).tool];
-			} else {
-				return [change as ToolInst];
-			}
-		})());
-		for(const tool of outOfDate) {
-			tool.state = ToolState.stale;
+		if(changes.length == 0) {
+			changes = this.tools;
 		}
+		const outOfDate = new SetWithChangedFlag<ToolInst>();
+		for(const change of changes) {
+			const tool: ToolInst = (change as Input).tool || (change as ToolInst);
+			tool.state = ToolState.stale;
+			outOfDate.add(tool);
+		}
+		console.log('outOfDate', outOfDate);
+
 		try {
 			const connections = new MapWithDefault<Output, Set<Input>>(() => new Set<Input>());
 			await this.updateSetRecursively(outOfDate, set => {
