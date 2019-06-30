@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts">
-	import { ToolInst, ToolState, Input, Output, Point, isPoint } from '@/tools'
+	import { ToolInst, ToolState, Input, Output, Point, isPoint, Viewport } from '@/tools'
 
 	import dagre from 'dagre';
 
@@ -101,6 +101,10 @@
 				}
 			},
 			layout(): ToolLayout[] {
+				if(this.toolManager.tools.length == 0) {
+					this.resetViewport();
+					return [];
+				}
 				if(this.settings.autoLayout) {
 					this.autoLayout();
 				}
@@ -115,7 +119,7 @@
 				viewport: {
 					translation: { x: 0, y: 0 } as Point,
 					scale: 1.0,
-				},
+				} as Viewport,
 				mouse: { state: 'off-canvas' } as Mouse,
 				connecting: undefined as Connector | undefined, // One side of a currently pending connection
 			};
@@ -179,6 +183,12 @@
 				this.shrink();
 				await this.$nextTick();
 				this.grow();
+			},
+
+			resetViewport() {
+				this.viewport.translation.x = 0;
+				this.viewport.translation.y = 0;
+				this.viewport.scale = 1;
 			},
 
 			*layoutConnectors(num: number, edge: Point & { width: number }): IterableIterator<Rect> {
@@ -585,14 +595,16 @@
 			mousedown(e: MouseEvent) {
 				switch(this.mouse.state) {
 					case 'over-background':
-						this.mouse = {
-							state: 'dragging-background',
-							loc: this.mouse.loc,
-							start: { // Convert back to untranslated coordinates
-								x: e.offsetX - this.viewport.translation.x * this.viewport.scale,
-								y: e.offsetY - this.viewport.translation.y * this.viewport.scale,
-							},
-						};
+						if(this.layout.length > 0) {
+							this.mouse = {
+								state: 'dragging-background',
+								loc: this.mouse.loc,
+								start: { // Convert back to untranslated coordinates
+									x: e.offsetX - this.viewport.translation.x * this.viewport.scale,
+									y: e.offsetY - this.viewport.translation.y * this.viewport.scale,
+								},
+							};
+						}
 						if(this.connecting) {
 							this.connecting = undefined;
 						} else {
@@ -645,17 +657,24 @@
 			},
 
 			middleclick(e: MouseEvent) {
-				if(this.mouse.state == 'over-tool') {
-					this.toolManager.removeTool(this.mouse.tool);
+				switch(this.mouse.state) {
+					case 'over-background':
+						this.resetViewport();
+						break;
+					case 'over-tool':
+						this.toolManager.removeTool(this.mouse.tool);
+						break;
 				}
 			},
 
 			wheel(e: WheelEvent) {
-				if(e.ctrlKey) {
-					this.viewport.scale -= e.deltaY / 200;
-				} else {
-					this.viewport.translation.x -= e.deltaX;
-					this.viewport.translation.y -= e.deltaY;
+				if(this.layout.length > 0) {
+					if(e.ctrlKey) {
+						this.viewport.scale -= e.deltaY / 200;
+					} else {
+						this.viewport.translation.x -= e.deltaX;
+						this.viewport.translation.y -= e.deltaY;
+					}
 				}
 			},
 

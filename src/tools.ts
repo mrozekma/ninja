@@ -1,4 +1,4 @@
-import importSchema, { Tools as ImportedData } from './tools.schema';
+import importSchema, { Tools as SerializedData } from './tools.schema';
 
 import { Base64 } from 'js-base64';
 //@ts-ignore No declaration file
@@ -147,6 +147,11 @@ export function isPoint(pt: any): pt is Point {
 	return pt.x !== undefined && pt.y !== undefined;
 }
 
+export interface Viewport {
+	translation: Point,
+	scale: number,
+}
+
 export enum ToolState { stale = 'stale', running = 'running', good = 'good', badInputs = 'bad-inputs', failed = 'failed', cycle = 'cycle' }
 
 export abstract class ToolInst {
@@ -257,7 +262,7 @@ export abstract class ToolInst {
 
 	protected onInputSet(input: Input, oldVal: string | number | boolean) {}
 
-	serialize(): object {
+	serialize() {
 		return {
 			type: this.def.name,
 			name: this.name,
@@ -619,10 +624,16 @@ export class ToolManager {
 		}
 	}
 
-	serialize(fmt: 'compact' | 'friendly' | 'base64'): string {
-		const obj = {
+	serialize(fmt: 'compact' | 'friendly' | 'base64', viewport?: Viewport): string {
+		const obj: SerializedData = {
 			version: 1,
 			tools: this.tools.map(tool => tool.serialize()),
+			viewport: viewport ? {
+				x: viewport.translation.x,
+				y: viewport.translation.y,
+				scale: viewport.scale,
+			} : undefined,
+			watches: Array.from(this.iterWatches(false)).map(io => [ io.tool.name, io.name ]),
 		};
 		switch(fmt) {
 			case 'compact': return JSON.stringify(cleanDeep(obj));
@@ -632,11 +643,11 @@ export class ToolManager {
 	}
 
 	// availableDefs is passed in here because importing toolGroups causes a circular dependency I can't easily resolve
-	deserialize(data: string, availableDefs: ToolDef[]) {
+	deserialize(data: string, availableDefs: ToolDef[], viewport?: Viewport) {
 		if(!data.startsWith('{')) {
 			data = Base64.decode(data);
 		}
-		const obj: ImportedData = JSON.parse(data);
+		const obj: SerializedData = JSON.parse(data);
 		new Validator().validate(obj, importSchema, { throwError: true });
 		console.log('Importing', obj);
 
@@ -685,7 +696,34 @@ export class ToolManager {
 			}
 		}
 
+		// Set watches
+		if(obj.watches) {
+			for(const [ toolName, name ] of obj.watches) {
+				const tool = insts.get(toolName);
+				if(tool === undefined) {
+					throw new Error(`Unknown watched tool: ${toolName}`);
+				}
+				const input = tool.inputs.find(input => input.name == name);
+				if(input) {
+					input.watch = true;
+				} else {
+					const output = tool.outputs.find(output => output.name == name);
+					if(output) {
+						output.watch = true;
+					} else {
+						throw new Error(`Unknown watched IO: ${toolName}.${name}`);
+					}
+				}
+			}
+		}
+
 		// Success. Replace the existing tools with the loaded set
 		this.tools = Array.from(insts.values());
+
+		if(viewport !== undefined && obj.viewport !== undefined) {
+			viewport.translation.x = obj.viewport.x;
+			viewport.translation.y = obj.viewport.y;
+			viewport.scale = obj.viewport.scale;
+		}
 	}
 }

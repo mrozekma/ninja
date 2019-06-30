@@ -205,12 +205,10 @@
 		},
 		watch: {
 			showErrorsPanel(val: boolean) {
-				//@ts-ignore
-				this.$refs.dfcanvas.shrinkOneTick();
+				(this.$refs.dfcanvas as any).shrinkOneTick();
 			},
 			showWatchPanel(val: boolean) {
-				//@ts-ignore
-				this.$refs.dfcanvas.shrinkOneTick();
+				(this.$refs.dfcanvas as any).shrinkOneTick();
 			},
 			errors(val: ToolError[]) {
 				if(this.settings.autoToggleErrors) {
@@ -250,6 +248,7 @@
 				const old = [...this.toolManager.tools];
 				this.toolManager.tools = [];
 				this.toolManager.selectedTool = undefined;
+				(this.$refs.dfcanvas as any).resetViewport();
 				this.$snackbar.open({
 					message: 'Tools cleared',
 					type: 'is-info',
@@ -299,7 +298,7 @@
 			loadFromString(data: string) {
 				const old = [...this.toolManager.tools];
 				try {
-					this.toolManager.deserialize(data, toolGroups.map(group => group.tools).flat());
+					this.toolManager.deserialize(data, toolGroups.map(group => group.tools).flat(), (this.$refs.dfcanvas as any).viewport);
 					this.toolManager.selectedTool = undefined;
 					this.$snackbar.open({
 						message: 'Tools loaded',
@@ -335,10 +334,11 @@
 				if(!this.anyTools) {
 					return this.showNoToolsWarning();
 				}
+				const viewport = (this.$refs.dfcanvas as any).viewport;
 				// Anti-pattern ahoy
 				switch(target) {
 					case 'browser':
-						localStorage.setItem(`savedTool.${name}`, this.toolManager.serialize('compact'));
+						localStorage.setItem(`savedTool.${name}`, this.toolManager.serialize('compact', viewport));
 						this.savedScripts = this.findSavedNames();
 						this.$snackbar.open({
 							message: "Script saved",
@@ -347,10 +347,10 @@
 						});
 						break;
 					case 'disk':
-						saveAs(new Blob([ this.toolManager.serialize('friendly') ], { type: 'text/plain' }), `${name}.ninja`);
+						saveAs(new Blob([ this.toolManager.serialize('friendly', viewport) ], { type: 'text/plain' }), `${name}.ninja`);
 						break;
 					case 'clipboard':
-						clipboard.writeText(window.location.href.split('#')[0] + '#' + this.toolManager.serialize('base64'))
+						clipboard.writeText(window.location.href.split('#')[0] + '#' + this.toolManager.serialize('base64', viewport))
 							.then(() => this.$snackbar.open({
 								message: "Link copied to clipboard",
 								type: 'is-info',
@@ -384,15 +384,13 @@
 			gridDragStart(grid: 'main' | 'center' | 'right', direction: 'row' | 'column', track: number) {
 				// The data flow canvas will prevent its container cell from shrinking, so if dragging a gutter next to it, shrink it temporarily
 				if((grid == 'main' && track == 3) || (grid == 'right' && track == 1)) {
-					//@ts-ignore
-					this.$refs.dfcanvas.shrink();
+					(this.$refs.dfcanvas as any).shrink();
 				}
 			},
 
 			gridDragEnd(grid: 'main' | 'center' | 'right', direction: 'row' | 'column', track: number) {
 				if((grid == 'main' && track == 3) || (grid == 'right' && track == 1)) {
-					//@ts-ignore
-					this.$refs.dfcanvas.grow();
+					(this.$refs.dfcanvas as any).grow();
 				}
 			},
 		},
