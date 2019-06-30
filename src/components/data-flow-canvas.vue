@@ -287,6 +287,18 @@
 					}
 				}
 
+				// Draw watchpoints
+				for(const layout of this.layout) {
+					for(const { field, rect } of [...layout.inputs, ...layout.outputs]) {
+						if(field.watch) {
+							this.ctx.fillStyle = '#714dd2';
+							this.ctx.beginPath();
+							this.ctx.arc(rect.x + rect.width / 2, rect.y + rect.height / 2, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
+							this.ctx.fill();
+						}
+					}
+				}
+
 				// Draw line between tool connector and mouse
 				if(this.connecting) {
 					let loc: Point | undefined = undefined;
@@ -452,7 +464,7 @@
 						width: width - 6,
 						height: height - 6,
 					}
-					this.ctx.fillStyle='#fff';
+					this.ctx.fillStyle = '#fff';
 					this.text(icon, paddedRect, 12, 'right', 'bottom', false, 'FontAwesome');
 				}
 
@@ -622,7 +634,9 @@
 							return;
 						}
 						//TODO Handle dragging a connection instead of clicking the connectors separately
-						if(this.connecting) {
+						if(e.ctrlKey) {
+							this.mouse.connector.field.watch = !this.mouse.connector.field.watch;
+						} else if(this.connecting) {
 							// Second half of the connection
 							const con1 = this.connecting, con2 = this.mouse.connector;
 							if(con1.type == 'input' && con2.type == 'output') {
