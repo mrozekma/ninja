@@ -13,6 +13,7 @@
 		"clean-deep": "^3.0.2",
 		"clipboard-polyfill": "^2.8.1",
 		"core-js": "^2.6.5",
+		"dagre": "^0.8.4",
 		"file-saver": "^2.0.2",
 		"js-base64": "^2.5.1",
 		"json-loader": "^0.5.7",
@@ -28,6 +29,7 @@
 	},
 	"devDependencies": {
 		"@types/css-font-loading-module": "^0.0.2",
+		"@types/dagre": "^0.7.42",
 		"@types/file-saver": "^2.0.1",
 		"@types/js-base64": "^2.3.1",
 		"@vue/cli-plugin-babel": "^3.8.0",

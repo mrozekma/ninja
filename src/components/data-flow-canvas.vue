@@ -9,6 +9,8 @@
 	import { Point, isPoint } from '@/types';
 	import { ToolInst, ToolState, Input, Output } from '@/tools'
 
+	import dagre from 'dagre';
+
 	interface Rect extends Point {
 		width: number;
 		height: number;
@@ -209,6 +211,41 @@
 					rect,
 					inputs: this.layoutInputs(tool.inputs, rect),
 					outputs: this.layoutOutputs(tool.outputs, { ...rect, y: rect.y + rect.height }),
+				};
+			},
+
+			autoLayout() {
+				const g = new dagre.graphlib.Graph();
+				g.setGraph({});
+				g.setDefaultEdgeLabel(() => ({}));
+				for(const tool of this.toolManager.tools) {
+					g.setNode(tool.name, { width: TOOL_WIDTH, height: TOOL_HEIGHT });
+				}
+				for(const tool of this.toolManager.tools) {
+					for(const input of tool.inputs) {
+						if(input.connection !== undefined) {
+							g.setEdge(input.connection.output.tool.name, input.tool.name);
+						}
+					}
+				}
+				dagre.layout(g);
+				for(const tool of this.toolManager.tools) {
+					const node = g.node(tool.name);
+					tool.loc.x = node.x;
+					tool.loc.y = node.y;
+				}
+
+				const dpr = window.devicePixelRatio || 1;
+				let { width, height } = g.graph();
+				// Margins (dagre doesn't put nodes flush at (0, 0))
+				width! += 80; height! += 80;
+				const scale = Math.min(this.canvas.width / dpr / width!, this.canvas.height / dpr / height!);
+				this.viewport = {
+					translation: {
+						x: 0,
+						y: 0,
+					},
+					scale,
 				};
 			},
 

@@ -96,7 +96,14 @@
 			<split-grid-area class="col" size-unit="fr" :size-value="1">
 				<split-grid direction="row" :gutter-size="3" class="right-grid" @drag-start="data => gridDragStart('right', data.direction, data.track)" @drag-end="data => gridDragEnd('right', data.direction, data.track)">
 					<split-grid-area class="col" size-unit="fr" :size-value="1">
-						<h1>Routing</h1>
+						<h1>
+							Routing
+							<div style="margin-right: 10px">
+								<b-tooltip v-if="anyTools" label="Auto-layout" position="is-bottom">
+									<i class="fas fa-project-diagram" @click="$refs.dfcanvas.autoLayout()"></i>
+								</b-tooltip>
+							</div>
+						</h1>
 						<data-flow-canvas ref="dfcanvas"></data-flow-canvas>
 					</split-grid-area>
 					<split-grid-gutter :show="showWatchPanel"/>
@@ -463,11 +470,19 @@ $colors: (
 		color: #fff;
 
 		h1 {
-			display: block;
+			display: grid;
+			grid-template-columns: 1fr auto;
 			border: solid lighten(#363636, 25%);
 			border-width: 1px 0;
 			padding: 10px;
 			background-color: lighten(#363636, 15%);
+
+			i {
+				float: right;
+				position: relative;
+				top: 2px;
+				cursor: pointer;
+			}
 		}
 
 		.field label {
@@ -477,19 +492,10 @@ $colors: (
 		.scroll {
 			overflow-y: auto;
 			> h1 {
-				display: grid;
-				grid-template-columns: 1fr auto;
 				position: sticky;
 				top: 0;
 				left: 0;
 				z-index: 2;
-				i {
-					float: right;
-					position: relative;
-					top: 2px;
-					font-size: 16pt;
-					cursor: pointer;
-				}
 			}
 		}
 	}
