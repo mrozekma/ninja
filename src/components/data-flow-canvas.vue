@@ -608,7 +608,12 @@
 			},
 
 			wheel(e: WheelEvent) {
-				this.viewport.scale -= e.deltaY / 200;
+				if(e.ctrlKey) {
+					this.viewport.scale -= e.deltaY / 200;
+				} else {
+					this.viewport.translation.x -= e.deltaX;
+					this.viewport.translation.y -= e.deltaY;
+				}
 			},
 
 			connect(inputCon: InputConnector, outputCon: OutputConnector) {
