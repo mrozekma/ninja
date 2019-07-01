@@ -5,7 +5,7 @@
 			<b-tag v-if="io.io == 'input'" type="is-primary"><i class="fas fa-sign-in-alt"></i> Input</b-tag>
 			<b-tag v-else-if="io.io == 'output'" type="is-primary"><i class="fas fa-sign-out-alt"></i> Output</b-tag>
 			<span class="clickable" @click="io.watch = false"><b-tag type="is-primary"><i class="fas fa-eye-slash"></i></b-tag></span>
-			<b-numberinput v-if="arrayLen !== undefined" controls-position="compact" size="is-small" :min="0" :max="arrayLen - 1" v-model="arrayIdx"></b-numberinput>
+			<b-numberinput v-if="arrayLen !== undefined" controls-position="compact" size="is-small" :min="0" :max="arrayLen - 1" :showMax="true" v-model="arrayIdx"></b-numberinput>
 		</template>
 		<tool-io :io="io" :arrayIdx="(arrayLen !== undefined) ? arrayIdx : undefined" :renderAsWatch="true"></tool-io>
 	</b-field>

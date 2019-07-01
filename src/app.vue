@@ -150,6 +150,11 @@
 		defaultNoticeQueue: false,
 		defaultModalCanCancel: ['escape', 'outside', 'button'],
 	});
+
+	// Custom versions of Buefy components
+	import CustomNumberInput from '@/components/buefy-custom/numberinput.vue';
+	Vue.component(CustomNumberInput.name, CustomNumberInput);
+
 	import 'typeface-montserrat';
 	import '@fortawesome/fontawesome-free';
 	import '@fortawesome/fontawesome-free/css/all.css';
@@ -485,7 +490,7 @@ $colors: (
 			i {
 				float: right;
 				position: relative;
-				top: 2px;
+				top: 4px;
 				cursor: pointer;
 			}
 		}
@@ -507,6 +512,10 @@ $colors: (
 
 	.modal-card-foot {
 		justify-content: flex-end;
+	}
+
+	.button.is-primary:hover, .button.is-primary:active {
+		background-color: #ff3860;
 	}
 
 	// https://cssfx.dev/

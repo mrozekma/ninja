@@ -23,7 +23,7 @@
 				<b-dropdown-item v-if="!io.watch" @click="io.watch = true"><i class="fas fa-eye"></i> Watch</b-dropdown-item>
 				<b-dropdown-item v-else @click="io.watch = false"><i class="fas fa-eye-slash"></i> Unwatch</b-dropdown-item>
 			</b-dropdown>
-			<b-numberinput v-if="arrayLen !== undefined" controls-position="compact" size="is-small" :min="0" :max="arrayLen - 1" v-model="arrayIdx"></b-numberinput>
+			<b-numberinput v-if="arrayLen !== undefined" controls-position="compact" size="is-small" :min="0" :max="arrayLen - 1" :showMax="true" v-model="arrayIdx"></b-numberinput>
 		</template>
 		<b-message v-if="io.io == 'input' && io.connection && io.connection.error" type="is-danger">
 			{{ io.connection.error }}
