@@ -32,7 +32,26 @@
 							"oneOf": [
 								{ "type": "string" },
 								{ "type": "boolean" },
-								{ "type": "number" }
+								{ "type": "number" },
+								{ "type": "array", "items": { "type": "string" } },
+								{ "type": "array", "items": { "type": "boolean" } },
+								{ "type": "array", "items": { "type": "number" } },
+								{
+									"$comment": "This is the JSON form of Buffer",
+									"type": "object",
+									"required": [ "type", "data" ],
+									"additionalProperties": false,
+									"properties": {
+										"type": {
+											"type": "string",
+											"const": "Buffer"
+										},
+										"data": {
+											"type": "array",
+											"items": { "type": "number" }
+										}
+									}
+								}
 							]
 						}
 					},

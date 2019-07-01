@@ -47,11 +47,19 @@ interface StringMixin {
 	type: 'string';
 	val: string;
 }
-
+interface StringArrayMixin {
+	type: 'string[]';
+	val: string[];
+}
 interface BooleanMixin {
 	type: 'boolean';
 	labels?: [ string, string ]; // [ enabled, disabled ]
 	val: boolean;
+}
+interface BooleanArrayMixin {
+	type: 'boolean[]';
+	labels?: [ string, string ]; // [ enabled, disabled ]
+	val: boolean[];
 }
 interface NumberMixin {
 	type: 'number';
@@ -59,26 +67,53 @@ interface NumberMixin {
 	max?: number;
 	val: number;
 }
+interface NumberArrayMixin {
+	type: 'number[]';
+	min?: number;
+	max?: number;
+	val: number[];
+}
 interface EnumMixin {
 	type: 'enum';
 	options: string[];
 	val: string;
 }
+interface EnumArrayMixin {
+	type: 'enum[]';
+	options: string[];
+	val: string[];
+}
+interface BytesMixin {
+	type: 'bytes';
+	val: Buffer;
+}
 
 // It should be possible to do this with generic Input<T> and Output<T> types, but having lots of problems with makeInput/Output()
 export type StringInput = InputMixin & StringMixin
+export type StringArrayInput = InputMixin & StringArrayMixin
 export type BooleanInput = InputMixin & BooleanMixin
+export type BooleanArrayInput = InputMixin & BooleanArrayMixin
 export type NumberInput = InputMixin & NumberMixin
+export type NumberArrayInput = InputMixin & NumberArrayMixin
 export type EnumInput = InputMixin & EnumMixin
-export type Input = StringInput | BooleanInput | NumberInput | EnumInput
+export type EnumArrayInput = InputMixin & EnumArrayMixin
+export type BytesInput = InputMixin & BytesMixin
+export type Input = StringInput | BooleanInput | NumberInput | EnumInput | BytesInput
+                  | StringArrayInput | BooleanArrayInput | NumberArrayInput | EnumArrayInput
 
 export type StringOutput = OutputMixin & StringMixin
+export type StringArrayOutput = OutputMixin & StringArrayMixin
 export type BooleanOutput = OutputMixin & BooleanMixin
+export type BooleanArrayOutput = OutputMixin & BooleanArrayMixin
 export type NumberOutput = OutputMixin & NumberMixin
+export type NumberArrayOutput = OutputMixin & NumberArrayMixin
 export type EnumOutput = OutputMixin & EnumMixin
-export type Output = StringOutput | BooleanOutput | NumberOutput | EnumOutput
+export type EnumArrayOutput = OutputMixin & EnumArrayMixin
+export type BytesOutput = OutputMixin & BytesMixin
+export type Output = StringOutput | BooleanOutput | NumberOutput | EnumOutput | BytesOutput
+                   | StringArrayOutput | BooleanArrayOutput | NumberArrayOutput | EnumArrayOutput
 
-export type IOValTypes = string | boolean | number
+export type IOValTypes = string | boolean | number | string[] | boolean[] | number[] | Buffer
 
 export interface ToolError {
 	tool: ToolInst;
@@ -87,6 +122,12 @@ export interface ToolError {
 }
 
 export function convertToString(val: IOValTypes): string {
+	if(Array.isArray(val)) {
+		val = val[0];
+	}
+	if(Buffer.isBuffer(val)) {
+		return val.toString('utf8');
+	}
 	switch(typeof val) {
 		case 'string': return val;
 		case 'boolean': return val ? 'true' : 'false';
@@ -95,6 +136,12 @@ export function convertToString(val: IOValTypes): string {
 }
 
 export function convertToBoolean(val: IOValTypes): boolean {
+	if(Array.isArray(val)) {
+		val = val[0];
+	}
+	if(Buffer.isBuffer(val)) {
+		return val.length > 0;
+	}
 	switch(typeof val) {
 		case 'string': return ['true', 'yes'].indexOf(val.toLowerCase()) >= 0;
 		case 'boolean': return val;
@@ -103,6 +150,12 @@ export function convertToBoolean(val: IOValTypes): boolean {
 }
 
 export function convertToNumber(val: IOValTypes): number {
+	if(Array.isArray(val)) {
+		val = val[0];
+	}
+	if(Buffer.isBuffer(val)) {
+		return val.readUInt8(0);
+	}
 	switch(typeof val) {
 		case 'string':
 			const rtn = parseInt(val, 10);
@@ -115,19 +168,36 @@ export function convertToNumber(val: IOValTypes): number {
 	}
 }
 
-export function convertToInputType(val: IOValTypes, input: Input): IOValTypes {
+export function convertToBytes(val: IOValTypes): Buffer {
+	if(Array.isArray(val)) {
+		// (string[] | number[] | boolean[]) can't be mapped, but (string | number | boolean)[] can
+		const val2: (string | number | boolean)[] = val;
+		const nums = val2.map(convertToNumber);
+		return Buffer.from(nums);
+	}
+	if(Buffer.isBuffer(val)) {
+		return val;
+	}
+	return Buffer.from([convertToNumber(val)]);
+}
+
+export function convertToPrimitiveInputType(val: IOValTypes, input: Input): Exclude<IOValTypes, any[] | Buffer> {
 	switch(input.type) {
 		case 'string':
+		case 'string[]':
 			return convertToString(val);
-		case 'enum': {
+		case 'enum':
+		case 'enum[]': {
 			const rtn = convertToString(val);
 			if(input.options.indexOf(rtn) < 0) {
 				throw new Error(`Invalid enum value: ${rtn}`);
 			}
 			return rtn; }
 		case 'boolean':
+		case 'boolean[]':
 			return convertToBoolean(val);
-		case 'number': {
+		case 'number':
+		case 'number[]': {
 			const rtn = convertToNumber(val);
 			if(input.min && rtn < input.min) {
 				throw new Error(`${rtn} < minimum ${input.min}`);
@@ -135,6 +205,31 @@ export function convertToInputType(val: IOValTypes, input: Input): IOValTypes {
 				throw new Error(`${rtn} > maximum ${input.max}`);
 			}
 			return rtn; }
+		case 'bytes':
+			throw new Error("Not a primitive type");
+	}
+}
+
+export function convertToInputType(val: IOValTypes, input: Input): IOValTypes {
+	if(input.type == 'bytes') {
+		return convertToBytes(val);
+	}
+	if((typeof input).endsWith('[]')) { // Input is array
+		if(Array.isArray(val)) {
+			const val2: (string | number | boolean)[] = val;
+			//@ts-ignore ...
+			return val2.map(e => convertToPrimitiveInputType(e, input));
+		} else {
+			const conv = convertToPrimitiveInputType(val, input);
+			//@ts-ignore ...
+			return [conv];
+		}
+	} else { // Input is not array
+		if(Array.isArray(val)) {
+			return convertToPrimitiveInputType(val[0], input);
+		} else {
+			return convertToPrimitiveInputType(val, input);
+		}
 	}
 }
 
@@ -260,7 +355,7 @@ export abstract class ToolInst {
 
 	protected abstract async runImpl(): Promise<void>;
 
-	protected onInputSet(input: Input, oldVal: string | number | boolean) {}
+	protected onInputSet(input: Input, oldVal: IOValTypes) {}
 
 	serialize() {
 		return {

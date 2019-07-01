@@ -15,7 +15,18 @@ export interface Tools {
       y: number;
     };
     inputs?: {
-      [k: string]: string | boolean | number;
+      [k: string]:
+        | string
+        | boolean
+        | number
+        | string[]
+        | boolean[]
+        | number[]
+        // | {
+        //     type: string;
+        //     data: number[];
+        //   };
+        | Buffer;
     };
     connections?: {
       [k: string]: string[];
