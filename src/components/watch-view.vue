@@ -1,31 +1,18 @@
 <template>
-	<fieldset v-else class="form" disabled>
-		<b-field v-for="io in watched" :key="`${io.tool.name}.${io.name}`">
-			<template slot="label">
-				<span class="clickable" @click="selectTool(io.tool)">{{ io.tool.name }}.{{ io.name }}</span>
-				<b-tag v-if="io.io == 'input'" type="is-primary"><i class="fas fa-sign-in-alt"></i> Input</b-tag>
-				<b-tag v-else-if="io.io == 'output'" type="is-primary"><i class="fas fa-sign-out-alt"></i> Output</b-tag>
-				<span class="clickable" @click="io.watch = false"><b-tag type="is-primary"><i class="fas fa-eye-slash"></i></b-tag></span>
-			</template>
-			<tool-io :io="io" :renderAsWatch="true"></tool-io>
-		</b-field>
-	</fieldset>
+	<div class="form">
+		<watch-field v-for="io in watched" :key="`${io.tool.name}.${io.name}`" :io="io"></watch-field>
+	</div>
 </template>
 
 <script lang="ts">
 	import { ToolInst, Input, Output } from '@/tools';
 
 	import Vue, { PropType } from 'vue';
-	import ToolIOComponent from '@/components/tool-io.vue';
+	import WatchFieldComponent from '@/components/watch-field.vue';
 	export default Vue.extend({
-		components: { ToolIo: ToolIOComponent },
+		components: { WatchField: WatchFieldComponent },
 		props: {
 			watched: Array as PropType<(Input | Output)[]>,
-		},
-		methods: {
-			selectTool(tool: ToolInst) {
-				this.toolManager.selectedTool = tool;
-			},
 		},
 	});
 </script>

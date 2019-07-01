@@ -33,16 +33,7 @@
 </template>
 
 <script lang="ts">
-	//TODO Merge auto-editor version into this
 	import { Input, Output, ToolState } from '@/tools';
-
-	interface AnnotatedOutput {
-		output: Output;
-		arrayInfo?: {
-			idx: number;
-			len: number;
-		}
-	}
 
 	import Vue, { PropType } from 'vue';
 	import ToolIOComponent from '@/components/tool-io.vue';
