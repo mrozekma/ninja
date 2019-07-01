@@ -214,7 +214,7 @@ export function convertToInputType(val: IOValTypes, input: Input): IOValTypes {
 	if(input.type == 'bytes') {
 		return convertToBytes(val);
 	}
-	if((typeof input).endsWith('[]')) { // Input is array
+	if(input.type.endsWith('[]')) { // Input is array
 		if(Array.isArray(val)) {
 			const val2: (string | number | boolean)[] = val;
 			//@ts-ignore ...
@@ -389,14 +389,22 @@ export abstract class ToolInst {
 
 	// These make me so sad. See the above comment about generic Input<T>/Output<T>
 	protected makeStringInput = (name: string, description: string, val: string = ''): StringInput => this.recordInput({ name, description, type: 'string', val, io: 'input', tool: this, connection: undefined, watch: false });
+	protected makeStringArrayInput = (name: string, description: string, val: string[] = []): StringArrayInput => this.recordInput({ name, description, type: 'string[]', val, io: 'input', tool: this, connection: undefined, watch: false });
 	protected makeBooleanInput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanInput => this.recordInput({ name, description, type: 'boolean', val, labels, io: 'input', tool: this, connection: undefined, watch: false });
+	protected makeBooleanArrayInput = (name: string, description: string, val: boolean[] = [], labels?: [ string, string ]): BooleanArrayInput => this.recordInput({ name, description, type: 'boolean[]', val, labels, io: 'input', tool: this, connection: undefined, watch: false });
 	protected makeNumberInput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberInput => this.recordInput({ name, description, type: 'number', val, min, max, io: 'input', tool: this, connection: undefined, watch: false });
+	protected makeNumberArrayInput = (name: string, description: string, val: number[] = [], min?: number, max?: number): NumberArrayInput => this.recordInput({ name, description, type: 'number[]', val, min, max, io: 'input', tool: this, connection: undefined, watch: false });
 	protected makeEnumInput = (name: string, description: string, val: string, options: string[]): EnumInput => this.recordInput({ name, description, type: 'enum', val, options, io: 'input', tool: this, connection: undefined, watch: false });
+	protected makeEnumArrayInput = (name: string, description: string, val: string[] = [], options: string[]): EnumArrayInput => this.recordInput({ name, description, type: 'enum[]', val, options, io: 'input', tool: this, connection: undefined, watch: false });
 
 	protected makeStringOutput = (name: string, description: string, val: string = ''): StringOutput => this.recordOutput({ name, description, type: 'string', val, io: 'output', tool: this, watch: false });
+	protected makeStringArrayOutput = (name: string, description: string, val: string[] = []): StringArrayOutput => this.recordOutput({ name, description, type: 'string[]', val, io: 'output', tool: this, watch: false });
 	protected makeBooleanOutput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanOutput => this.recordOutput({ name, description, type: 'boolean', val, labels, io: 'output', tool: this, watch: false });
+	protected makeBooleanArrayOutput = (name: string, description: string, val: boolean[] = [], labels?: [ string, string ]): BooleanArrayOutput => this.recordOutput({ name, description, type: 'boolean[]', val, labels, io: 'output', tool: this, watch: false });
 	protected makeNumberOutput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberOutput => this.recordOutput({ name, description, type: 'number', val, min, max, io: 'output', tool: this, watch: false });
+	protected makeNumberArrayOutput = (name: string, description: string, val: number[] = [], min?: number, max?: number): NumberArrayOutput => this.recordOutput({ name, description, type: 'number[]', val, min, max, io: 'output', tool: this, watch: false });
 	protected makeEnumOutput = (name: string, description: string, val: string, options: string[]): EnumOutput => this.recordOutput({ name, description, type: 'enum', val, options, io: 'output', tool: this, watch: false });
+	protected makeEnumArrayOutput = (name: string, description: string, val: string[] = [], options: string[]): EnumArrayOutput => this.recordOutput({ name, description, type: 'enum[]', val, options, io: 'output', tool: this, watch: false });
 }
 
 // Abstract interface for a tool that passes its input through to its output

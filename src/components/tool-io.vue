@@ -72,33 +72,33 @@
 				return this.renderAsWatch || this.io.io != 'input' || this.io.connection !== undefined;
 			},
 			switchLabel(): string | undefined {
-				if(this.io.type != 'boolean') {
+				if(this.io.type != 'boolean' && this.io.type != 'boolean[]') {
 					return undefined;
 				}
 				if(this.loading) {
 					return "Loading...";
 				}
 				const [ enabledLabel, disabledLabel ] = this.io.labels || [ 'Enabled', 'Disabled' ];
-				return this.io.val ? enabledLabel : disabledLabel;
+				return this.val ? enabledLabel : disabledLabel;
 			},
 		},
 		mounted() {
-			if(this.io.type == 'string') {
+			if(this.innerType == 'string') {
 				this.scaleText();
 			}
 		},
 		updated() {
-			if(this.io.type == 'string') {
+			if(this.innerType == 'string') {
 				this.scaleText();
 			}
 		},
 		methods: {
 			set(value: IOValTypes) {
+				//TODO Handle array
 				this.toolManager.setInputVal(this.io as Input, value);
 			},
 			scaleText() {
 				const el = (this.$refs.textarea as Vue).$el as HTMLTextAreaElement;
-				console.log(el);
 				el.style.height = 'auto';
 				el.style.height = `${el.scrollHeight + 2}px`;
 			},

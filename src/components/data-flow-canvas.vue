@@ -423,9 +423,15 @@
 				this.ctx.moveTo(x, y);
 
 				// Top
-				for(const { rect } of layout.inputs) {
+				for(const { field, rect } of layout.inputs) {
 					this.ctx.lineTo(rect.x, y);
-					this.ctx.arc(rect.x + rect.width / 2, y, rect.width / 2, Math.PI, 0, true);
+					if(field.type.endsWith('[]')) {
+						this.ctx.lineTo(rect.x, y + rect.height / 2);
+						this.ctx.lineTo(rect.x + rect.width, y + rect.height / 2);
+						this.ctx.lineTo(rect.x + rect.width, y);
+					} else {
+						this.ctx.arc(rect.x + rect.width / 2, y, rect.width / 2, Math.PI, 0, true);
+					}
 				}
 				this.ctx.lineTo(x + width, y);
 
@@ -433,9 +439,15 @@
 				this.ctx.lineTo(x + width, y + height);
 
 				// Bottom. These are drawn right-to-left, so need to process the outputs in reverse
-				for(const { rect } of reversed(layout.outputs)) {
+				for(const { field, rect } of reversed(layout.outputs)) {
 					this.ctx.lineTo(rect.x + rect.width, y + height);
-					this.ctx.arc(rect.x + rect.width / 2, y + height, rect.width / 2, 0, Math.PI, false);
+					if(field.type.endsWith('[]')) {
+						this.ctx.lineTo(rect.x + rect.width, y + height + rect.height / 2);
+						this.ctx.lineTo(rect.x, y + height + rect.height / 2);
+						this.ctx.lineTo(rect.x, y + height);
+					} else {
+						this.ctx.arc(rect.x + rect.width / 2, y + height, rect.width / 2, 0, Math.PI, false);
+					}
 				}
 				this.ctx.lineTo(x, y + height);
 
@@ -529,10 +541,15 @@
 				for(const point of [sourceCenter, sinkCenter]) {
 					this.ctx.fillStyle = upToDate ? 'hsl(348, 100%, 61%)' : '#aaa';
 					if(point) {
-						this.ctx.beginPath();
-						this.ctx.arc(point.x, point.y, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
-						this.ctx.stroke();
-						this.ctx.fill();
+						if(source.field.type.endsWith('[]')) {
+							this.ctx.strokeRect(point.x - CONNECTOR_RADIUS + 1, point.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
+							this.ctx.fillRect(point.x - CONNECTOR_RADIUS + 1, point.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
+						} else {
+							this.ctx.beginPath();
+							this.ctx.arc(point.x, point.y, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
+							this.ctx.stroke();
+							this.ctx.fill();
+						}
 					} else {
 						const rect: Rect = {
 							x: sourceCenter.x - 8,
