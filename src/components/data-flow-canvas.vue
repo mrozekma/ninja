@@ -424,13 +424,13 @@
 
 				// Top
 				for(const { field, rect } of layout.inputs) {
-					this.ctx.lineTo(rect.x, y);
+					this.ctx.lineTo(rect.x - this.ctx.lineWidth / 2, y);
 					if(field.type.endsWith('[]')) {
-						this.ctx.lineTo(rect.x, y + rect.height / 2);
-						this.ctx.lineTo(rect.x + rect.width, y + rect.height / 2);
-						this.ctx.lineTo(rect.x + rect.width, y);
+						this.ctx.lineTo(rect.x - this.ctx.lineWidth / 2, y + rect.height / 2 + this.ctx.lineWidth / 2);
+						this.ctx.lineTo(rect.x + rect.width + this.ctx.lineWidth / 2, y + rect.height / 2 + this.ctx.lineWidth / 2);
+						this.ctx.lineTo(rect.x + rect.width + this.ctx.lineWidth / 2, y);
 					} else {
-						this.ctx.arc(rect.x + rect.width / 2, y, rect.width / 2, Math.PI, 0, true);
+						this.ctx.arc(rect.x + rect.width / 2, y, (rect.width + this.ctx.lineWidth) / 2, Math.PI, 0, true);
 					}
 				}
 				this.ctx.lineTo(x + width, y);
