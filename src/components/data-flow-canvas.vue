@@ -414,6 +414,33 @@
 				}
 			},
 
+			getStyleForConnector(connector: Connector): { stroke: string, fill: string, shape: 'circle' | 'rect' } {
+				let hue;
+				switch(connector.field.type) {
+					case 'string':
+					case 'string[]':
+						hue = 348;
+						break;
+					case 'boolean':
+					case 'boolean[]':
+						hue = 60;
+						break;
+					case 'number':
+					case 'number[]':
+						hue = 120;
+						break;
+					case 'bytes':
+						hue = 240;
+						break;
+				}
+
+				return {
+					stroke: `hsl(${hue}, 100%, 31%)`,
+					fill: `hsl(${hue}, 100%, 61%)`,
+					shape: connector.field.type.endsWith('[]') ? 'rect' : 'circle',
+				};
+			},
+
 			drawTool(layout: ToolLayout) {
 				const { x, y, width, height } = layout.rect;
 				const { color, icon } = this.getStyleForState(layout.tool.state);
@@ -520,6 +547,7 @@
 					x: sink.rect.x + sink.rect.width / 2,
 					y: sink.rect.y + sink.rect.height / 2,
 				};
+				const style = this.getStyleForConnector(source);
 
 				// Line between the connectors
 				//TODO Bend differently if the output tool is below the input tool
@@ -534,21 +562,24 @@
 				} else {
 					this.ctx.lineTo(sourceCenter.x, sourceCenter.y + (source.type == 'input' ? -32 : 32));
 				}
-				this.ctx.strokeStyle = upToDate ? 'hsl(348, 100%, 31%)' : '#888';
+				this.ctx.strokeStyle = upToDate ? style.stroke : '#888';
 				this.ctx.stroke();
 
 				// Connector endpoints (these are drawn after the line so the fill is on top)
 				for(const point of [sourceCenter, sinkCenter]) {
-					this.ctx.fillStyle = upToDate ? 'hsl(348, 100%, 61%)' : '#aaa';
 					if(point) {
-						if(source.field.type.endsWith('[]')) {
-							this.ctx.strokeRect(point.x - CONNECTOR_RADIUS + 1, point.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
-							this.ctx.fillRect(point.x - CONNECTOR_RADIUS + 1, point.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
-						} else {
-							this.ctx.beginPath();
-							this.ctx.arc(point.x, point.y, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
-							this.ctx.stroke();
-							this.ctx.fill();
+						this.ctx.fillStyle = upToDate ? style.fill : '#aaa';
+						switch(style.shape) {
+							case 'rect':
+								this.ctx.strokeRect(point.x - CONNECTOR_RADIUS + 1, point.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
+								this.ctx.fillRect(point.x - CONNECTOR_RADIUS + 1, point.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
+								break;
+							case 'circle':
+								this.ctx.beginPath();
+								this.ctx.arc(point.x, point.y, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
+								this.ctx.stroke();
+								this.ctx.fill();
+								break;
 						}
 					} else {
 						const rect: Rect = {
