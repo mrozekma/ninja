@@ -40,13 +40,20 @@
 		:disabled="disabled">
 		<option v-for="option in io.options" :value="option">{{ option }}</option>
 	</b-select>
+	<bytes-input v-else-if="innerType == 'bytes'"
+		:value="val"
+		@input="set($event)"
+		:loading="loading"
+		:disabled="disabled"></bytes-input>
 </template>
 
 <script lang="ts">
 	import { Input, Output, IOValTypes, ToolState } from '@/tools';
 
 	import Vue, { PropType } from 'vue';
+	import BytesInput from './bytes-input.vue';
 	export default Vue.extend({
+		components: { BytesInput },
 		props: {
 			io: Object as PropType<Input | Output>,
 			arrayIdx: Number as PropType<number | undefined>,
@@ -94,7 +101,7 @@
 		},
 		methods: {
 			set(value: IOValTypes) {
-				//TODO Handle array
+				console.log(this.io, value);
 				this.toolManager.setInputVal(this.io as Input, value);
 			},
 			scaleText() {

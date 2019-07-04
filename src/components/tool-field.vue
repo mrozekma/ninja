@@ -1,5 +1,5 @@
 <template>
-	<b-field :class="{wide: (io.type == 'string' || io.type == 'string[]')}">
+	<b-field :class="{wide: (io.type == 'string' || io.type == 'string[]' || io.type == 'bytes')}">
 		<template slot="label">
 			{{ io.description }}
 			<b-tag v-if="!io.watch" type="is-primary">{{ io.name }}</b-tag>

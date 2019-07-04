@@ -73,15 +73,15 @@ interface NumberArrayMixin {
 	max?: number;
 	val: number[];
 }
-interface EnumMixin {
+interface EnumMixin<T = string> {
 	type: 'enum';
-	options: string[];
-	val: string;
+	options: T[];
+	val: T;
 }
-interface EnumArrayMixin {
+interface EnumArrayMixin<T = string> {
 	type: 'enum[]';
-	options: string[];
-	val: string[];
+	options: T[];
+	val: T[];
 }
 interface BytesMixin {
 	type: 'bytes';
@@ -95,8 +95,8 @@ export type BooleanInput = InputMixin & BooleanMixin
 export type BooleanArrayInput = InputMixin & BooleanArrayMixin
 export type NumberInput = InputMixin & NumberMixin
 export type NumberArrayInput = InputMixin & NumberArrayMixin
-export type EnumInput = InputMixin & EnumMixin
-export type EnumArrayInput = InputMixin & EnumArrayMixin
+export type EnumInput<T = string> = InputMixin & EnumMixin<T>
+export type EnumArrayInput<T = string> = InputMixin & EnumArrayMixin<T>
 export type BytesInput = InputMixin & BytesMixin
 export type Input = StringInput | BooleanInput | NumberInput | EnumInput | BytesInput
                   | StringArrayInput | BooleanArrayInput | NumberArrayInput | EnumArrayInput
@@ -107,8 +107,8 @@ export type BooleanOutput = OutputMixin & BooleanMixin
 export type BooleanArrayOutput = OutputMixin & BooleanArrayMixin
 export type NumberOutput = OutputMixin & NumberMixin
 export type NumberArrayOutput = OutputMixin & NumberArrayMixin
-export type EnumOutput = OutputMixin & EnumMixin
-export type EnumArrayOutput = OutputMixin & EnumArrayMixin
+export type EnumOutput<T = string> = OutputMixin & EnumMixin<T>
+export type EnumArrayOutput<T = string> = OutputMixin & EnumArrayMixin<T>
 export type BytesOutput = OutputMixin & BytesMixin
 export type Output = StringOutput | BooleanOutput | NumberOutput | EnumOutput | BytesOutput
                    | StringArrayOutput | BooleanArrayOutput | NumberArrayOutput | EnumArrayOutput
@@ -178,7 +178,11 @@ export function convertToBytes(val: IOValTypes): Buffer {
 	if(Buffer.isBuffer(val)) {
 		return val;
 	}
-	return Buffer.from([convertToNumber(val)]);
+	switch(typeof val) {
+		case 'string': return Buffer.from(val, 'utf8');
+		case 'boolean': return Buffer.from([convertToNumber(val)]);
+		case 'number': return Buffer.from([val]);
+	}
 }
 
 export function convertToPrimitiveInputType(val: IOValTypes, input: Input): Exclude<IOValTypes, any[] | Buffer> {
@@ -302,17 +306,29 @@ export abstract class ToolInst {
 			throw new Error(`Input ${this.name}.${input.name} is bound to ${input.connection.output.tool.name}.${input.connection.output.name}`);
 		}
 
-		const expectedType = (input.type === 'enum') ? 'string' : input.type;
-		if(expectedType != typeof val) {
-			throw new Error(`Tried to set ${this.name}.${input.name} to a ${typeof val}, but expected a ${expectedType}`);
-		}
-		if(input.type === 'enum' && input.options.indexOf(val as string) < 0) {
-			throw new Error(`Tried to set ${this.name}.${input.name} to an invalid enum value`);
+		switch(input.type) {
+			case 'bytes':
+				if(!Buffer.isBuffer(val)) {
+					throw new Error(`Tried to set ${this.name}.${input.name} to a ${typeof val}, but expected bytes`);
+				}
+				break;
+			case 'enum':
+				if(typeof val !== 'string') {
+					throw new Error(`Tried to set ${this.name}.${input.name} to a ${typeof val}, but expected a string`);
+				} else if(input.type === 'enum' && input.options.indexOf(val as string) < 0) {
+					throw new Error(`Tried to set ${this.name}.${input.name} to an invalid enum value`);
+				}
+				break;
+			default:
+				if(input.type != typeof val) {
+					throw new Error(`Tried to set ${this.name}.${input.name} to a ${typeof val}, but expected a ${input.type}`);
+				}
+				break;
 		}
 
 		console.log(`${this.name}.${input.name} = ${val}`);
 		const oldVal = input.val;
-		input.val = val;
+		(input.val as IOValTypes) = val;
 		this.state = ToolState.stale;
 		this.onInputSet(input, oldVal);
 	}
@@ -358,13 +374,14 @@ export abstract class ToolInst {
 	protected onInputSet(input: Input, oldVal: IOValTypes) {}
 
 	serialize() {
+		type SerializedIOValTypes = Exclude<IOValTypes, Buffer> | { type: 'Buffer', data: number[] };
 		return {
 			type: this.def.name,
 			name: this.name,
 			loc: this.loc,
-			inputs: this.inputs.reduce<{ [K: string]: IOValTypes }>((map, input) => {
+			inputs: this.inputs.reduce<{ [K: string]: SerializedIOValTypes }>((map, input) => {
 				if(input.connection === undefined) {
-					map[input.name] = input.val;
+					map[input.name] = Buffer.isBuffer(input.val) ? input.val.toJSON() : input.val;
 				}
 				return map;
 			}, {}),
@@ -387,30 +404,44 @@ export abstract class ToolInst {
 		return out;
 	}
 
-	// These make me so sad. See the above comment about generic Input<T>/Output<T>
-	protected makeStringInput = (name: string, description: string, val: string = ''): StringInput => this.recordInput({ name, description, type: 'string', val, io: 'input', tool: this, connection: undefined, watch: false });
-	protected makeStringArrayInput = (name: string, description: string, val: string[] = []): StringArrayInput => this.recordInput({ name, description, type: 'string[]', val, io: 'input', tool: this, connection: undefined, watch: false });
-	protected makeBooleanInput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanInput => this.recordInput({ name, description, type: 'boolean', val, labels, io: 'input', tool: this, connection: undefined, watch: false });
-	protected makeBooleanArrayInput = (name: string, description: string, val: boolean[] = [], labels?: [ string, string ]): BooleanArrayInput => this.recordInput({ name, description, type: 'boolean[]', val, labels, io: 'input', tool: this, connection: undefined, watch: false });
-	protected makeNumberInput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberInput => this.recordInput({ name, description, type: 'number', val, min, max, io: 'input', tool: this, connection: undefined, watch: false });
-	protected makeNumberArrayInput = (name: string, description: string, val: number[] = [], min?: number, max?: number): NumberArrayInput => this.recordInput({ name, description, type: 'number[]', val, min, max, io: 'input', tool: this, connection: undefined, watch: false });
-	protected makeEnumInput = (name: string, description: string, val: string, options: string[]): EnumInput => this.recordInput({ name, description, type: 'enum', val, options, io: 'input', tool: this, connection: undefined, watch: false });
-	protected makeEnumArrayInput = (name: string, description: string, val: string[] = [], options: string[]): EnumArrayInput => this.recordInput({ name, description, type: 'enum[]', val, options, io: 'input', tool: this, connection: undefined, watch: false });
+	private commonInputOpts = {
+		io: 'input' as const,
+		tool: this,
+		connection: undefined,
+		watch: false,
+	}
+	private commonOutputOpts = {
+		io: 'output' as const,
+		tool: this,
+		watch: false,
+	}
 
-	protected makeStringOutput = (name: string, description: string, val: string = ''): StringOutput => this.recordOutput({ name, description, type: 'string', val, io: 'output', tool: this, watch: false });
-	protected makeStringArrayOutput = (name: string, description: string, val: string[] = []): StringArrayOutput => this.recordOutput({ name, description, type: 'string[]', val, io: 'output', tool: this, watch: false });
-	protected makeBooleanOutput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanOutput => this.recordOutput({ name, description, type: 'boolean', val, labels, io: 'output', tool: this, watch: false });
-	protected makeBooleanArrayOutput = (name: string, description: string, val: boolean[] = [], labels?: [ string, string ]): BooleanArrayOutput => this.recordOutput({ name, description, type: 'boolean[]', val, labels, io: 'output', tool: this, watch: false });
-	protected makeNumberOutput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberOutput => this.recordOutput({ name, description, type: 'number', val, min, max, io: 'output', tool: this, watch: false });
-	protected makeNumberArrayOutput = (name: string, description: string, val: number[] = [], min?: number, max?: number): NumberArrayOutput => this.recordOutput({ name, description, type: 'number[]', val, min, max, io: 'output', tool: this, watch: false });
-	protected makeEnumOutput = (name: string, description: string, val: string, options: string[]): EnumOutput => this.recordOutput({ name, description, type: 'enum', val, options, io: 'output', tool: this, watch: false });
-	protected makeEnumArrayOutput = (name: string, description: string, val: string[] = [], options: string[]): EnumArrayOutput => this.recordOutput({ name, description, type: 'enum[]', val, options, io: 'output', tool: this, watch: false });
+	// These make me so sad. See the above comment about generic Input<T>/Output<T>
+	protected makeStringInput = (name: string, description: string, val: string = ''): StringInput => this.recordInput({ ...this.commonInputOpts, name, description, type: 'string', val });
+	protected makeStringArrayInput = (name: string, description: string, val: string[] = []): StringArrayInput => this.recordInput({ ...this.commonInputOpts, name, description, type: 'string[]', val });
+	protected makeBooleanInput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanInput => this.recordInput({ ...this.commonInputOpts, name, description, type: 'boolean', val, labels });
+	protected makeBooleanArrayInput = (name: string, description: string, val: boolean[] = [], labels?: [ string, string ]): BooleanArrayInput => this.recordInput({ ...this.commonInputOpts, name, description, type: 'boolean[]', val, labels });
+	protected makeNumberInput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberInput => this.recordInput({ ...this.commonInputOpts, name, description, type: 'number', val, min, max });
+	protected makeNumberArrayInput = (name: string, description: string, val: number[] = [], min?: number, max?: number): NumberArrayInput => this.recordInput({ ...this.commonInputOpts, name, description, type: 'number[]', val, min, max });
+	protected makeEnumInput = <T extends string = string>(name: string, description: string, val: T, options: T[]): EnumInput<T> => this.recordInput({ ...this.commonInputOpts, name, description, type: 'enum', val, options });
+	protected makeEnumArrayInput = (name: string, description: string, val: string[] = [], options: string[]): EnumArrayInput => this.recordInput({ ...this.commonInputOpts, name, description, type: 'enum[]', val, options });
+	protected makeBytesInput = (name: string, description: string, val: Buffer = Buffer.alloc(0)): BytesInput => this.recordInput({ ...this.commonInputOpts, name, description, type: 'bytes', val });
+
+	protected makeStringOutput = (name: string, description: string, val: string = ''): StringOutput => this.recordOutput({ ...this.commonOutputOpts, name, description, type: 'string', val });
+	protected makeStringArrayOutput = (name: string, description: string, val: string[] = []): StringArrayOutput => this.recordOutput({ ...this.commonOutputOpts, name, description, type: 'string[]', val });
+	protected makeBooleanOutput = (name: string, description: string, val: boolean = false, labels?: [ string, string ]): BooleanOutput => this.recordOutput({ ...this.commonOutputOpts, name, description, type: 'boolean', val, labels });
+	protected makeBooleanArrayOutput = (name: string, description: string, val: boolean[] = [], labels?: [ string, string ]): BooleanArrayOutput => this.recordOutput({ ...this.commonOutputOpts, name, description, type: 'boolean[]', val, labels });
+	protected makeNumberOutput = (name: string, description: string, val: number = 0, min?: number, max?: number): NumberOutput => this.recordOutput({ ...this.commonOutputOpts, name, description, type: 'number', val, min, max });
+	protected makeNumberArrayOutput = (name: string, description: string, val: number[] = [], min?: number, max?: number): NumberArrayOutput => this.recordOutput({ ...this.commonOutputOpts, name, description, type: 'number[]', val, min, max });
+	protected makeEnumOutput = (name: string, description: string, val: string, options: string[]): EnumOutput => this.recordOutput({ ...this.commonOutputOpts, name, description, type: 'enum', val, options });
+	protected makeEnumArrayOutput = (name: string, description: string, val: string[] = [], options: string[]): EnumArrayOutput => this.recordOutput({ ...this.commonOutputOpts, name, description, type: 'enum[]', val, options });
+	protected makeBytesOutput = (name: string, description: string, val: Buffer = Buffer.alloc(0)): BytesOutput => this.recordOutput({ ...this.commonOutputOpts, name, description, type: 'bytes', val });
 }
 
 // Abstract interface for a tool that passes its input through to its output
 export class PassthroughTool extends ToolInst {
 	private inp: Input = this.makeNumberInput('inp', 'Input');
-	private type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean' ]);
+	private type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean', 'bytes' ]);
 	private out: Output = this.makeNumberOutput('out', 'Output');
 
 	protected onInputSet(input: Input, oldVal: string | number | boolean) {
@@ -769,7 +800,17 @@ export class ToolManager {
 				if(input === undefined) {
 					throw new Error(`Unknown input: ${tool.name}.${name}`);
 				}
-				inst.setInputVal(input, val);
+				if(typeof val === 'object' && !Array.isArray(val)) {
+					switch(val.type) {
+						case 'Buffer':
+							this.setInputVal(input, Buffer.from(val.data));
+							break;
+						default:
+							throw new Error(`Unknown serialized object in ${tool.name}.${name} of type ${val.type}`);
+					}
+				} else {
+					inst.setInputVal(input, val);
+				}
 			}
 		}
 

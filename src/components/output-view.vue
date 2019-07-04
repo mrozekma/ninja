@@ -28,7 +28,6 @@
 				}
 				switch(tool.state) {
 					case ToolState.good: return undefined;
-					case ToolState.stale: return { type: 'is-info', text: "Pending..." }; //TODO Remove once the pending indicator is in the panel <h1>
 					case ToolState.badInputs: return { type: 'is-danger', text: "Invalid inputs prevented this tool from running." };
 					case ToolState.failed: return { type: 'is-danger', text: `This tool failed to run: ${tool.error}.` };
 					case ToolState.cycle: return { type: 'is-warning', text: "A circular dependency prevented this tool from running." };

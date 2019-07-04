@@ -22,11 +22,10 @@ export interface Tools {
         | string[]
         | boolean[]
         | number[]
-        // | {
-        //     type: string;
-        //     data: number[];
-        //   };
-        | Buffer;
+        | {
+            type: string;
+            data: number[];
+          };
     };
     connections?: {
       [k: string]: string[];

@@ -415,25 +415,23 @@
 			},
 
 			getStyleForConnector(connector: Connector): { stroke: string, fill: string, shape: 'circle' | 'rect' } {
-				let hue;
-				switch(connector.field.type) {
-					case 'string':
-					case 'string[]':
-						hue = 348;
-						break;
-					case 'boolean':
-					case 'boolean[]':
-						hue = 60;
-						break;
-					case 'number':
-					case 'number[]':
-						hue = 120;
-						break;
-					case 'bytes':
-						hue = 240;
-						break;
-				}
-
+				const hue: number = (() => {
+					switch(connector.field.type) {
+						case 'string':
+						case 'string[]':
+						case 'enum':
+						case 'enum[]':
+							return 348;
+						case 'boolean':
+						case 'boolean[]':
+							return 60;
+						case 'number':
+						case 'number[]':
+							return 120;
+						case 'bytes':
+							return 240;
+					}
+				})();
 				return {
 					stroke: `hsl(${hue}, 100%, 31%)`,
 					fill: `hsl(${hue}, 100%, 61%)`,

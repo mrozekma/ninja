@@ -1,5 +1,5 @@
 <template>
-	<b-field>
+	<b-field :class="{wide: (io.type == 'string' || io.type == 'string[]' || io.type == 'bytes')}">
 		<template slot="label">
 			<span class="clickable" @click="selectTool(io.tool)">{{ io.tool.name }}.{{ io.name }}</span>
 			<b-tag v-if="io.io == 'input'" type="is-primary"><i class="fas fa-sign-in-alt"></i> Input</b-tag>
@@ -50,7 +50,7 @@
 			flex: 1 0 calc(100% - 20px);
 		}
 
-		label > * {
+		label > *:not(:first-child) {
 			display: inline-flex;
 			margin-left: 10px;
 		}
