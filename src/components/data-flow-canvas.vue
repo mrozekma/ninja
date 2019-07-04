@@ -1,7 +1,5 @@
 <template>
-	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown.left="mousedown" @mouseup.left="mouseup" @click.middle="middleclick" @wheel.prevent="wheel">
-		{{ canvas }}
-	</canvas>
+	<canvas ref="canvas" width=200 height=200 @mousemove="mousemove" @mouseleave="mouseleave" @mousedown.left="mousedown" @mouseup.left="mouseup" @click.middle="middleclick" @wheel.prevent="wheel"></canvas>
 </template>
 
 <script lang="ts">

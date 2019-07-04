@@ -4,6 +4,7 @@ const pathlib = require('path');
 
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
+const PrerenderSPAPlugin = require('prerender-spa-plugin');
 
 //TODO Self-contained builds still generate the other outputs, even though they're unneeded
 const selfContained = (process.env.SELF_CONTAINED !== undefined);
@@ -22,16 +23,23 @@ module.exports = {
 		}
 
 		if(config.mode == 'production' && !selfContained) {
-			config.plugins.push({
-				apply: compiler => {
-					compiler.hooks.afterEmit.tapPromise('LicenseGen', () => new Promise(resolve => {
-						const ws = fs.createWriteStream(pathlib.join(compiler.outputPath, 'licenses.txt'));
-						const proc = child_process.spawn('yarn licenses generate-disclaimer', { cwd: compiler.options.context, shell: true });
-						proc.stdout.pipe(ws);
-						proc.on('exit', resolve);
-					}));
-				}
-			});
+			config.plugins.push(
+				{
+					apply: compiler => {
+						compiler.hooks.afterEmit.tapPromise('LicenseGen', () => new Promise(resolve => {
+							const ws = fs.createWriteStream(pathlib.join(compiler.outputPath, 'licenses.txt'));
+							const proc = child_process.spawn('yarn licenses generate-disclaimer', { cwd: compiler.options.context, shell: true });
+							proc.stdout.pipe(ws);
+							proc.on('exit', resolve);
+						}));
+					}
+				},
+				new PrerenderSPAPlugin({
+					staticDir: pathlib.join(__dirname, 'dist'),
+					// outputDir: pathlib.join(__dirname, 'ssr'),
+					routes: [ '/' ],
+				}),
+			);
 		}
 		if(selfContained) {
 			config.plugins.push(
