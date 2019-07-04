@@ -1,5 +1,5 @@
 <template>
-	<form action="">
+	<form action="" @submit.prevent="saveToBrowser">
 		<div class="modal-card">
 			<header class="modal-card-head">
 				<p class="modal-card-title">Save</p>

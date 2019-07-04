@@ -1,21 +1,19 @@
 <template>
-	<form action="">
-		<div class="modal-card">
-			<section class="modal-card-body">
-				<i class="fas fa-user-ninja logo"></i>
-				<div>
-					<p class="modal-card-title">Ninja</p>
-					<a target="_blank" :href="buildLink" class="version">{{ buildVersion }}</a><br>
-					Built {{ buildDate }}.<br>
-					Hosting {{ toolCount }} {{ (toolCount == 1) ? 'tool' : 'tools' }}.<br>
-				</div>
-			</section>
-			<footer class="modal-card-foot">
-				<a v-if="hasLicenses" class="button" target="_blank" href="licenses.txt">Licenses</a>
-				<button class="button" type="button" @click="$parent.close">Close</button>
-			</footer>
-		</div>
-	</form>
+	<div class="modal-card">
+		<section class="modal-card-body">
+			<i class="fas fa-user-ninja logo"></i>
+			<div>
+				<p class="modal-card-title">Ninja</p>
+				<a target="_blank" :href="buildLink" class="version">{{ buildVersion }}</a><br>
+				Built {{ buildDate }}.<br>
+				Hosting {{ toolCount }} {{ (toolCount == 1) ? 'tool' : 'tools' }}.<br>
+			</div>
+		</section>
+		<footer class="modal-card-foot">
+			<a v-if="hasLicenses" class="button" target="_blank" href="licenses.txt">Licenses</a>
+			<button class="button" type="button" @click="$parent.close">Close</button>
+		</footer>
+	</div>
 </template>
 
 <script lang="ts">
