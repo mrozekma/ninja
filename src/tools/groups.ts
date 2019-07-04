@@ -7,6 +7,7 @@ export interface ToolGroup {
 }
 
 import test from '@/tools/test';
+import assert from '@/tools/assert';
 import text from '@/tools/text';
 import encoding from '@/tools/encoding';
 import crypto from '@/tools/crypto';
@@ -15,6 +16,10 @@ const groups: ToolGroup[] = [{
 	name: 'Test',
 	icon: 'fas fa-vial',
 	tools: test,
+}, {
+	name: 'Assert',
+	icon: 'fas fa-equals',
+	tools: assert,
 }, {
 	name: 'Text',
 	icon: 'fas fa-envelope-open-text',

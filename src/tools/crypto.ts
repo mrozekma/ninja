@@ -1,4 +1,4 @@
-import { makeDef, ToolInst, Input, Output, ToolDef } from '@/tools';
+import { makeDef, ToolInst, Input, ToolDef } from '@/tools';
 
 //@ts-ignore No declaration file
 import { encrypt as caesarShift, decrypt as caesarUnshift } from 'caesar-shift';

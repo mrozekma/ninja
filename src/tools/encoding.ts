@@ -1,4 +1,4 @@
-import { makeDef, ToolInst, Input, Output, ToolDef } from '@/tools';
+import { makeDef, ToolInst, Input, ToolDef } from '@/tools';
 
 import { Base64 } from 'js-base64';
 

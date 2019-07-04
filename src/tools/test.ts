@@ -1,4 +1,4 @@
-import { makeDef, ToolInst, Input, Output, convertToInputType, ToolDef, PassthroughTool } from '@/tools';
+import { makeDef, ToolInst, Input, Output, PassthroughTool } from '@/tools';
 
 class ConstantTool extends PassthroughTool {
 	// Literally just the passthrough interface

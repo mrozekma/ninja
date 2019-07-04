@@ -1,4 +1,4 @@
-import { makeDef, ToolInst, Output, StringArrayOutput, Input } from '@/tools';
+import { makeDef, ToolInst, Input } from '@/tools';
 
 class StringEncode extends ToolInst {
 	private inp = this.makeStringInput('in', 'Input');
