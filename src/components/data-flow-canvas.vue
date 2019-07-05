@@ -217,7 +217,15 @@
 			},
 
 			layoutTool(tool: ToolInst): ToolLayout {
-				const rect: Rect = { ...tool.loc, width: TOOL_WIDTH, height: TOOL_HEIGHT };
+				const rect: Rect = {
+					...tool.loc,
+					width: Math.max(
+						TOOL_WIDTH,
+						(2 * CONNECTOR_RADIUS + CONNECTOR_GAP) * tool.inputs.length,
+						(2 * CONNECTOR_RADIUS + CONNECTOR_GAP) * tool.outputs.length,
+					),
+					height: TOOL_HEIGHT
+				};
 				return {
 					tool,
 					rect,
@@ -519,7 +527,7 @@
 				for(const { field, rect } of layout.inputs) {
 					this.text(field.name, {
 						x: rect.x - textPad,
-						y: rect.y + 9,
+						y: rect.y + 10,
 						width: rect.width + 2 * textPad,
 						height: 1,
 					}, 10, 'center', 'top');
@@ -527,7 +535,7 @@
 				for(const { field, rect } of layout.outputs) {
 					this.text(field.name, {
 						x: rect.x - textPad,
-						y: rect.y - 9,
+						y: rect.y - 10,
 						width: rect.width + 2 * textPad,
 						height: 1,
 					}, 10, 'center', 'top');
