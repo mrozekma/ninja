@@ -1,32 +1,27 @@
-import { makeDef, ToolInst, Input, ToolDef } from '@/tools';
-
-import { Base64 } from 'js-base64';
+import { makeDef, ToolInst, Input, Output } from '@/tools';
 
 class Base64Tool extends ToolInst {
-	private inp = this.makeStringInput('in', '');
+	private inp: Input = this.makeStringInput('in', '');
 	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Encode', 'Decode' ]);
-	private out = this.makeStringOutput('out', '');
+	private out: Output = this.makeStringOutput('out', '');
 
-	constructor(def: ToolDef, name: string) {
-		super(def, name);
-		this.updateDescriptions();
-	}
-
-	protected onInputSet(input: Input, oldVal: string | number | boolean) {
+	protected onInputSet(input: Input) {
 		if(input === this.dir) {
-			this.updateDescriptions();
+			const dir = this.dir.val;
+			const pt = dir ? this.inp : this.out, enc = dir ? this.out : this.inp;
+			pt.type = 'bytes';
+			pt.description = 'Plaintext';
+			enc.type = 'string';
+			enc.description = 'Encoded';
 		}
 	}
 
-	private updateDescriptions() {
-		const dir = this.dir.val;
-		this.inp.description = dir ? "Plaintext" : "Encoded";
-		this.out.description = dir ? "Encoded" : "Plaintext";
-	}
-
 	async runImpl() {
-		const fn = this.dir.val ? Base64.encode : Base64.decode;
-		this.out.val = fn(this.inp.val);
+		if(this.dir.val) {
+			this.out.val = (this.inp.val as Buffer).toString('base64');
+		} else {
+			this.out.val = Buffer.from(this.inp.val as string, 'base64');
+		}
 	}
 }
 

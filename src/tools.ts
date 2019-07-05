@@ -1,6 +1,5 @@
 import importSchema, { Tools as SerializedData } from './tools.schema';
 
-import { Base64 } from 'js-base64';
 //@ts-ignore No declaration file
 import cleanDeep from 'clean-deep';
 import { Validator } from 'jsonschema';
@@ -364,6 +363,7 @@ export abstract class ToolInst {
 			await this.runImpl();
 			this.state = ToolState.good;
 		} catch(e) {
+			console.error(e);
 			this.state = ToolState.failed;
 			this._error = e.message;
 		}
@@ -371,7 +371,10 @@ export abstract class ToolInst {
 
 	protected abstract async runImpl(): Promise<void>;
 
-	protected onInputSet(input: Input, oldVal: IOValTypes) {}
+	protected onInputSet(input: Input, oldVal: IOValTypes | undefined) {}
+
+	//TODO This seems pretty hacky. Should have a better way to properly deserialize tools
+	readonly inputDeserializeOrder: string[] = [];
 
 	serialize() {
 		type SerializedIOValTypes = Exclude<IOValTypes, Buffer> | { type: 'Buffer', data: number[] };
@@ -396,6 +399,8 @@ export abstract class ToolInst {
 
 	private recordInput<T extends Input>(inp: T): T {
 		this.allInputs.push(inp);
+		// Need to wait until after this function has returned and the result assigned to a class field
+		setTimeout(() => this.onInputSet(inp, undefined), 0);
 		return inp;
 	}
 
@@ -444,7 +449,9 @@ export class PassthroughTool extends ToolInst {
 	private type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean', 'bytes' ]);
 	private out: Output = this.makeNumberOutput('out', 'Output');
 
-	protected onInputSet(input: Input, oldVal: string | number | boolean) {
+	inputDeserializeOrder = [ 'type' ];
+
+	protected onInputSet(input: Input, oldVal?: string | number | boolean) {
 		if(input === this.type) {
 			this.inp.type = this.out.type = this.type.val as 'string' | 'number' | 'boolean';
 			this.inp.val = convertToInputType(this.inp.val, this.inp);
@@ -772,14 +779,14 @@ export class ToolManager {
 		switch(fmt) {
 			case 'compact': return JSON.stringify(cleanDeep(obj));
 			case 'friendly': return JSON.stringify(obj, null, '\t');
-			case 'base64': return Base64.encodeURI(JSON.stringify(obj));
+			case 'base64': return Buffer.from(JSON.stringify(obj)).toString('base64'); //TODO URI encoding
 		}
 	}
 
 	// availableDefs is passed in here because importing toolGroups causes a circular dependency I can't easily resolve
 	deserialize(data: string, availableDefs: ToolDef[], viewport?: Viewport) {
 		if(!data.startsWith('{')) {
-			data = Base64.decode(data);
+			data = Buffer.from(data, 'base64').toString('utf8');
 		}
 		const obj: SerializedData = JSON.parse(data);
 		new Validator().validate(obj, importSchema, { throwError: true });
@@ -795,7 +802,18 @@ export class ToolManager {
 			const inst = def.gen(tool.name);
 			insts.set(tool.name, inst);
 			inst.loc = tool.loc;
-			for(const [ name, val ] of Object.entries(tool.inputs || {})) {
+			const inputVals = Object.entries(tool.inputs || {});
+			if(inst.inputDeserializeOrder.length > 0) {
+				const order = inst.inputDeserializeOrder;
+				inputVals.sort(([name1, val1], [name2, val2]) => {
+					const idx1 = order.findIndex(name => name == name1), idx2 = order.findIndex(name => name == name2);
+					return (idx1 >= 0 && idx2 >= 0) ? idx1 - idx2 :
+					       (idx1 >= 0) ? -1 :
+					       (idx2 >= 0) ? 1 :
+					       0;
+				});
+			}
+			for(const [ name, val ] of inputVals) {
 				const input = inst.inputs.find(input => input.name == name);
 				if(input === undefined) {
 					throw new Error(`Unknown input: ${tool.name}.${name}`);

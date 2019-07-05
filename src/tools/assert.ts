@@ -6,7 +6,7 @@ class AssertEqual extends ToolInst {
 	private type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean', 'bytes', 'string[]', 'number[]', 'boolean[]' ]);
 	private eq: Output = this.makeBooleanOutput('eq', 'Equal?');
 
-	protected onInputSet(input: Input, oldVal: string | number | boolean) {
+	protected onInputSet(input: Input) {
 		if(input === this.type) {
 			this.in1.type = this.in2.type = this.type.val;
 			//TODO This throws an exception if the val isn't convertable. Same problem in PassthroughTool

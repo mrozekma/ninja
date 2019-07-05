@@ -1,5 +1,5 @@
 <template>
-	<div class="form">
+	<div class="auto-editor">
 		<tool-field v-for="input in inputs" :key="input.name" :io="input"></tool-field>
 	</div>
 </template>
@@ -21,7 +21,7 @@
 </script>
 
 <style lang="less" scoped>
-	.form {
+	.auto-editor {
 		display: flex;
 		flex-wrap: wrap;
 
