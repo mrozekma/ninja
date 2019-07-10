@@ -22,6 +22,7 @@
 				</template>
 				<b-dropdown-item v-if="!io.watch" @click="io.watch = true"><i class="fas fa-eye"></i> Watch</b-dropdown-item>
 				<b-dropdown-item v-else @click="io.watch = false"><i class="fas fa-eye-slash"></i> Unwatch</b-dropdown-item>
+				<b-dropdown-item v-if="io.io == 'input' && io.connection === undefined" @click="makeConstant(io)"><i class="fas fa-question"></i> Pull into constant</b-dropdown-item> <!-- TODO Icon -->
 			</b-dropdown>
 			<b-numberinput v-if="arrayLen !== undefined" controls-position="compact" size="is-small" :min="0" :max="arrayLen - 1" :showMax="true" v-model="arrayIdx"></b-numberinput>
 		</template>
@@ -63,6 +64,10 @@
 			},
 			disconnect(input: Input) {
 				this.toolManager.disconnect(input);
+			},
+			makeConstant(input: Input) {
+				const tool = this.toolManager.addConstant(input.name, input.val);
+				this.toolManager.connect(input, tool.output);
 			},
 		},
 	});

@@ -4,15 +4,15 @@ import importSchema, { Tools as SerializedData } from './tools.schema';
 import cleanDeep from 'clean-deep';
 import { Validator } from 'jsonschema';
 
-export type ToolDef = {
+export type ToolDef<T extends ToolInst = ToolInst> = {
 	name: string;
 	description: string;
-	gen: (name: string) => ToolInst;
+	gen: (name: string) => T;
 	editor?: () => Promise<any>;
 }
 
-export function makeDef(ctor: { new(def: ToolDef, name: string): ToolInst }, name: string, description: string, editor?: () => Promise<any>): ToolDef {
-	const rtn: ToolDef = {
+export function makeDef<T extends ToolInst>(ctor: { new(def: ToolDef<T>, name: string): T }, name: string, description: string, editor?: () => Promise<any>): ToolDef<T> {
+	const rtn: ToolDef<T> = {
 		name,
 		description,
 		gen: (name: string) => new ctor(rtn, name),
@@ -341,7 +341,8 @@ export abstract class ToolInst {
 		const oldVal = input.val;
 		const output = input.connection.output;
 		try {
-			input.val = convertToInputType(output.val, input);
+			const val = convertToInputType(output.val, input);
+			input.val = val;
 		} catch(e) {
 			input.connection.error = `Unable to convert ${output.type} ${output.tool.name}.${output.name} to ${input.type} ${input.tool.name}.${input.name}: ${e.message}`;
 			return;
@@ -445,15 +446,15 @@ export abstract class ToolInst {
 
 // Abstract interface for a tool that passes its input through to its output
 export class PassthroughTool extends ToolInst {
-	private inp: Input = this.makeNumberInput('inp', 'Input');
-	private type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean', 'bytes' ]);
-	private out: Output = this.makeNumberOutput('out', 'Output');
+	protected inp: Input = this.makeNumberInput('inp', 'Input');
+	protected type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean', 'string[]', 'number[]', 'boolean[]', 'bytes' ]);
+	protected out: Output = this.makeNumberOutput('out', 'Output');
 
 	inputDeserializeOrder = [ 'type' ];
 
 	protected onInputSet(input: Input, oldVal?: string | number | boolean) {
 		if(input === this.type) {
-			this.inp.type = this.out.type = this.type.val as 'string' | 'number' | 'boolean';
+			this.inp.type = this.out.type = this.type.val as 'string' | 'number' | 'boolean' | 'bytes' | 'string[]' | 'number[]' | 'boolean[]';
 			this.inp.val = convertToInputType(this.inp.val, this.inp);
 		}
 	}
@@ -462,6 +463,36 @@ export class PassthroughTool extends ToolInst {
 		this.out.val = this.inp.val;
 	}
 }
+
+class ConstantTool extends PassthroughTool {
+	setInputVal(input: Input, val: IOValTypes) {
+		if(input === this.inp) {
+			if(Buffer.isBuffer(val)) {
+				super.setInputVal(this.type, 'bytes');
+			} else {
+				switch(typeof (Array.isArray(val) ? val[0] : val)) {
+					case 'string':
+						super.setInputVal(this.type, Array.isArray(val) ? 'string[]' : 'string');
+						break;
+					case 'number':
+						super.setInputVal(this.type, Array.isArray(val) ? 'number[]' : 'number');
+						break;
+					case 'boolean':
+						super.setInputVal(this.type, Array.isArray(val) ? 'boolean[]' : 'boolean');
+						break;
+					default:
+						throw new Error(`Can't deduce type of value: ${val} (${typeof val})`);
+				}
+			}
+		}
+		super.setInputVal(input, val);
+	}
+
+	get input() { return this.inp; }
+	get output() { return this.out; }
+}
+
+export const constantDef = makeDef(ConstantTool, 'Constant', 'Constant value');
 
 class SetWithChangedFlag<T> extends Set<T> {
 	private _changed = false;
@@ -531,15 +562,32 @@ export class ToolManager {
 		return old;
 	}
 
-	addTool(def: ToolDef): ToolInst {
-		// Find a free name based on the tool name
+	generateToolName(baseName: string) {
+		// Find a free name based on the baseName
+		const names = new Set(this.tools.map(tool => tool.name));
+		if(!names.has(baseName)) {
+			return baseName;
+		}
+		for(let i = 2; ; i++) {
+			const name = `${baseName} #${i}`;
+			if(!names.has(name)) {
+				return name;
+			}
+		}
+	}
+
+	addTool<T extends ToolInst>(def: ToolDef<T>, baseName?: string): T {
+		// Find a free name based on the baseName
+		if(baseName === undefined) {
+			baseName = def.name;
+		}
 		const names = new Set(this.tools.map(tool => tool.name));
 		const name: string = (() => {
-			if(!names.has(def.name)) {
-				return def.name;
+			if(!names.has(baseName)) {
+				return baseName;
 			}
 			for(let i = 2; ; i++) {
-				const name = `${def.name} #${i}`;
+				const name = `${baseName} #${i}`;
 				if(!names.has(name)) {
 					return name;
 				}
@@ -548,6 +596,12 @@ export class ToolManager {
 		const tool = def.gen(name);
 		this._tools.push(tool);
 		this.updateData(tool);
+		return tool;
+	}
+
+	addConstant(name: string, val: IOValTypes): ConstantTool {
+		const tool = this.addTool(constantDef, name);
+		tool.setInputVal(tool.input, val);
 		return tool;
 	}
 
@@ -669,17 +723,21 @@ export class ToolManager {
 		} while(set.changed);
 	}
 
-	private updateId = 0;
+	private updateSource: Readonly<(Input | ToolInst)[]> | undefined = undefined;
 	//TODO It would be nice for this to get called automatically instead of by every spot that updates an input. Investigate RxJS or similar libraries
 	//TODO Remove debug output
 	async updateData(...changes: Readonly<(Input | ToolInst)[]>) {
-		const myId = ++this.updateId;
-		console.log('Update data', myId, changes);
-
+		console.log('Update data', changes);
 		// Find every tool affected by this change
 		if(changes.length == 0) {
 			changes = this.tools;
 		}
+		if(this.updateSource !== undefined) {
+			changes = [...this.updateSource, ...changes];
+		}
+		this.updateSource = changes;
+		console.log(changes);
+
 		const outOfDate = new SetWithChangedFlag<ToolInst>();
 		for(const change of changes) {
 			const tool: ToolInst = (change as Input).tool || (change as ToolInst);
@@ -693,7 +751,7 @@ export class ToolManager {
 			await this.updateSetRecursively(outOfDate, set => {
 				for(const tool of this.tools) {
 					for(const input of tool.inputs) {
-						if(myId != this.updateId) {
+						if(this.updateSource !== changes) {
 							throw 'superceded';
 						}
 						if(input.connection) {
@@ -709,7 +767,7 @@ export class ToolManager {
 				}
 			});
 
-			console.log(`Update ${myId}`, outOfDate, connections);
+			console.log(`Update ${changes}`, outOfDate, connections);
 
 			// Recompute tools
 			//TODO Not positive this is guaranteed to resolve in certain cycle conditions, but can't come up with any to prove it
@@ -717,7 +775,7 @@ export class ToolManager {
 				console.log('Running. Remaining:', [...set].map(x => x.name));
 				const promises: Promise<void>[] = [];
 				for(const tool of set) {
-					if(myId != this.updateId) {
+					if(this.updateSource !== changes) {
 						throw 'superceded';
 					}
 					if(tool.inputs.every(input => input.connection === undefined || input.connection.upToDate || input.connection.error)) {
@@ -752,7 +810,7 @@ export class ToolManager {
 			});
 		} catch(e) {
 			if(e === 'superceded') {
-				console.log(`Update ${myId} superceded`);
+				console.log(`Update superceded`);
 				return;
 			}
 			throw e;

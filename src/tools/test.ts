@@ -1,8 +1,4 @@
-import { makeDef, ToolInst, Input, Output, PassthroughTool } from '@/tools';
-
-class ConstantTool extends PassthroughTool {
-	// Literally just the passthrough interface
-}
+import { makeDef, ToolInst, Input, Output, PassthroughTool, constantDef } from '@/tools';
 
 class AddTool extends ToolInst {
 	private fst = this.makeNumberInput('fst', 'First addend');
@@ -55,7 +51,7 @@ class LipsumTool extends ToolInst {
 }
 
 export default [
-	makeDef(ConstantTool, 'Constant', 'Emit/passthrough a constant'),
+	constantDef,
 	makeDef(AddTool, 'Add', 'Add two numbers'),
 	makeDef(FormTestTool, 'Form test', 'Form test tool'),
 	makeDef(SleepTool, 'Sleep', 'Sleep for set amount of time'),
