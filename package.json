@@ -10,7 +10,6 @@
 		"@fortawesome/fontawesome-free": "^5.9.0",
 		"buefy": "^0.7.7",
 		"caesar-shift": "^1.0.0",
-		"clean-deep": "^3.0.2",
 		"clipboard-polyfill": "^2.8.1",
 		"core-js": "^2.6.5",
 		"dagre": "^0.8.4",

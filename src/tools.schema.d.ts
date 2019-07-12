@@ -10,7 +10,7 @@ export interface Tools {
   tools: {
     type: string;
     name: string;
-    loc: {
+    loc?: null | {
       x: number;
       y: number;
     };

@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-	import { ToolInst, ToolState, Input, Output, Point, isPoint, Viewport } from '@/tools'
+	import { ToolInst, ToolState, Input, Output, Point, isPoint, Viewport, ConstantTool } from '@/tools'
 
 	import dagre from 'dagre';
 
@@ -38,21 +38,26 @@
 	type Mouse = ({
 		state: 'off-canvas';
 	} | {
-		state: 'over-background',
-		loc: Point, // Relative to canvas origin
+		state: 'over-background';
+		loc: Point; // Relative to canvas origin
 	} | {
-		state: 'dragging-background',
-		loc: Point, // Relative to canvas origin
-		start: Point, // Drag origin, relative to canvas origin
+		state: 'dragging-background';
+		loc: Point; // Relative to canvas origin
+		start: Point; // Drag origin, relative to canvas origin
 	} | {
-		state: 'over-tool' | 'dragging-tool',
-		loc: Point, // Relative to tool origin
-		tool: ToolInst,
+		state: 'over-tool' | 'dragging-tool';
+		loc: Point; // Relative to tool origin
+		tool: ToolInst;
 	} | {
-		state: 'over-connector',
-		loc: Point, // Relative to connector origin
-		connector: Connector,
-		valid: boolean,
+		state: 'over-connector';
+		loc: Point; // Relative to connector origin
+		connector: Connector;
+		valid: boolean;
+	} | {
+		state: 'over-indicator';
+		loc: Point; // Relative to indicator origin
+		layout: IndicatorLayout;
+		valid: boolean;
 	})
 
 	interface ToolLayout {
@@ -60,6 +65,21 @@
 		rect: Rect;
 		inputs: InputConnector[];
 		outputs: OutputConnector[];
+	}
+	interface ConnectionLayout {
+		source: InputConnector;
+		sink: OutputConnector;
+	}
+	interface IndicatorLayout {
+		type: 'missing' | 'constant';
+		source: Connector;
+		sink: Rect;
+		output: Output;
+	}
+	interface Layout {
+		tools: ToolLayout[];
+		connections: ConnectionLayout[];
+		indicators: IndicatorLayout[];
 	}
 
 	function* reversed<T>(arr: T[]): IterableIterator<T> {
@@ -82,7 +102,7 @@
 		computed: {
 			cursor(): string {
 				if(this.connecting) {
-					if(this.mouse.state == 'over-connector') {
+					if(this.mouse.state == 'over-connector' || this.mouse.state == 'over-indicator') {
 						return this.mouse.valid ? 'pointer' : 'no-drop';
 					}
 					// Otherwise when connecting, always use the default cursor, even when over other things
@@ -93,20 +113,27 @@
 					case 'dragging-tool':
 						return this.settings.autoLayout ? 'default' : 'move';
 					case 'over-connector':
+					case 'over-indicator':
 						return 'pointer';
 					default:
 						return 'default';
 				}
 			},
-			layout(): ToolLayout[] {
+			layout(): Layout {
 				if(this.toolManager.tools.length == 0) {
 					this.resetViewport();
-					return [];
+					return {
+						tools: [],
+						connections: [],
+						indicators: [],
+					};
 				}
 				if(this.settings.autoLayout) {
 					this.autoLayout();
 				}
-				return this.toolManager.tools.map(this.layoutTool);
+				const tools = this.toolManager.tools.filter(tool => tool.loc).map(this.layoutTool);
+				const [ connections, indicators ] = this.layoutConnections(tools);
+				return { tools, connections, indicators };
 			},
 		},
 		data() {
@@ -189,6 +216,22 @@
 				this.viewport.scale = 1;
 			},
 
+			padRect(rect: Rect, amt?: number) {
+				const { x, y, width, height } = rect;
+				if(amt === undefined) {
+					amt = this.ctx.lineWidth;
+				}
+				if(width <= 2 * amt || height <= 2 * amt) {
+					return rect;
+				}
+				return {
+					x: x + amt,
+					y: y + amt,
+					width: width - 2 * amt,
+					height: height - 2 * amt,
+				}
+			},
+
 			*layoutConnectors(num: number, edge: Point & { width: number }): IterableIterator<Rect> {
 				// Connectors are 2 * CONNECTOR_RADIUS wide with CONNECTOR_GAP space between them.
 				// These are nonsense if num is 0, but they're also not used
@@ -217,6 +260,9 @@
 			},
 
 			layoutTool(tool: ToolInst): ToolLayout {
+				if(tool.loc === undefined) {
+					throw new Error("Can't layout tool with no location");
+				}
 				const rect: Rect = {
 					...tool.loc,
 					width: Math.max(
@@ -226,22 +272,72 @@
 					),
 					height: TOOL_HEIGHT
 				};
-				return {
-					tool,
-					rect,
-					inputs: this.layoutInputs(tool.inputs, rect),
-					outputs: this.layoutOutputs(tool.outputs, { ...rect, y: rect.y + rect.height }),
-				};
+				const inputs = this.layoutInputs(tool.inputs, rect);
+				const outputs = this.layoutOutputs(tool.outputs, { ...rect, y: rect.y + rect.height });
+				return { tool, rect, inputs, outputs };
+			},
+
+			layoutConnections(toolLayouts: ToolLayout[]): [ ConnectionLayout[], IndicatorLayout[] ] {
+				const connections: ConnectionLayout[] = [];
+				const indicators: IndicatorLayout[] = [];
+				for(const toolLayout of toolLayouts) {
+					for(const inputCon of toolLayout.inputs) {
+						if(inputCon.field.connection === undefined) {
+							continue;
+						}
+						const output = inputCon.field.connection.output;
+						if(output.tool instanceof ConstantTool) {
+							this.ctx.font = `16px ${FONT}`;
+							const width = this.ctx.measureText(output.tool.name).width;
+							const extraPadding = this.ctx.lineWidth;
+							indicators.push({
+								type: 'constant',
+								source: inputCon,
+								sink: {
+									x: inputCon.rect.x + inputCon.rect.width / 2 - width / 2 - extraPadding, // To center this above the source, we need inputCon.rect.x + inputCon.rect.width / 2 == sink.x + sink.width / 2
+									y: inputCon.rect.y - 32 - extraPadding * 2,
+									width: width + extraPadding,
+									height: 16 + extraPadding,
+								},
+								output,
+							});
+						} else {
+							const outputToolLayout = toolLayouts.find(layout => layout.tool === output.tool);
+							const outputCon = outputToolLayout ? outputToolLayout.outputs.find(layout => layout.field === output) : undefined;
+							if(outputCon) {
+								connections.push({
+									source: inputCon,
+									sink: outputCon,
+								});
+							} else {
+								const edge = 16;
+								indicators.push({
+									type: 'missing',
+									source: inputCon,
+									sink: {
+										x: inputCon.rect.x + inputCon.rect.width / 2 - edge / 2, // To center this above the source, we need inputCon.rect.x + inputCon.rect.width / 2 == sink.x + sink.width / 2
+										width: edge,
+										y: inputCon.rect.y - 32,
+										height: edge,
+									},
+									output,
+								});
+							}
+						}
+					}
+				}
+				return [ connections, indicators ];
 			},
 
 			autoLayout() {
 				const g = new dagre.graphlib.Graph();
 				g.setGraph({});
 				g.setDefaultEdgeLabel(() => ({}));
-				for(const tool of this.toolManager.tools) {
+				const locTools = this.toolManager.tools.filter(tool => tool.loc !== undefined);
+				for(const tool of locTools) {
 					g.setNode(tool.name, { width: TOOL_WIDTH, height: TOOL_HEIGHT });
 				}
-				for(const tool of this.toolManager.tools) {
+				for(const tool of locTools) {
 					for(const input of tool.inputs) {
 						if(input.connection !== undefined) {
 							g.setEdge(input.connection.output.tool.name, input.tool.name);
@@ -249,10 +345,10 @@
 					}
 				}
 				dagre.layout(g);
-				for(const tool of this.toolManager.tools) {
+				for(const tool of locTools) {
 					const node = g.node(tool.name);
-					tool.loc.x = node.x;
-					tool.loc.y = node.y;
+					tool.loc!.x = node.x;
+					tool.loc!.y = node.y;
 				}
 
 				const dpr = window.devicePixelRatio || 1;
@@ -277,24 +373,21 @@
 				this.ctx.restore();
 
 				// Draw tools
-				for(const layout of this.layout) {
+				for(const layout of this.layout.tools) {
 					this.drawTool(layout);
 				}
 
 				// Draw line between tool connectors
-				for(const layout of this.layout) {
-					for(const inputCon of layout.inputs) {
-						if(inputCon.field.connection) {
-							const output: Output = inputCon.field.connection.output;
-							const outputLayout = this.layout.find(layout => layout.tool == output.tool)!;
-							const outputCon = outputLayout.outputs.find(con => con.field == output);
-							this.drawConnection(inputCon, outputCon, inputCon.field.connection.upToDate);
-						}
-					}
+				for(const layout of this.layout.connections) {
+					this.drawConnection(layout.source, layout.sink, layout.source.field.connection!.upToDate);
+				}
+
+				for(const layout of this.layout.indicators) {
+					this.drawIndicator(layout);
 				}
 
 				// Draw watchpoints
-				for(const layout of this.layout) {
+				for(const layout of this.layout.tools) {
 					for(const { field, rect } of [...layout.inputs, ...layout.outputs]) {
 						if(field.watch) {
 							this.ctx.fillStyle = '#714dd2';
@@ -314,8 +407,8 @@
 							break;
 						case 'over-tool':
 							loc = {
-								x: this.mouse.tool.loc.x + this.mouse.loc.x,
-								y: this.mouse.tool.loc.y + this.mouse.loc.y,
+								x: this.mouse.tool.loc!.x + this.mouse.loc.x,
+								y: this.mouse.tool.loc!.y + this.mouse.loc.y,
 							};
 							break;
 						case 'over-connector':
@@ -326,6 +419,14 @@
 								y: connector.y + connector.height / 2,
 							};
 							break;
+						case 'over-indicator':
+							// Snap to bottom-center of rectangle
+							const rect = this.mouse.layout.sink;
+							loc = {
+								x: rect.x + rect.width / 2,
+								y: rect.y + rect.height,
+							};
+							break;
 					}
 					if(loc) {
 						this.drawConnection(this.connecting, loc);
@@ -334,8 +435,6 @@
 
 				this.ctx.save();
 				this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-				// this.ctx.strokeStyle = '#f00';
-				// this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
 				this.ctx.fillStyle = '#fff';
 				this.text(`(${this.viewport.translation.x}, ${this.viewport.translation.y}) x ${this.viewport.scale}`, {x: 0, y: 0, width: this.canvas.width, height: this.canvas.height}, 10, 'left', 'bottom');
 				this.ctx.restore();
@@ -501,14 +600,8 @@
 				this.ctx.shadowBlur = 0;
 
 				if(icon) {
-					const paddedRect: Rect = {
-						x: x + 3,
-						y: y + 3,
-						width: width - 6,
-						height: height - 6,
-					}
 					this.ctx.fillStyle = '#fff';
-					this.text(icon, paddedRect, 12, 'right', 'bottom', false, 'FontAwesome');
+					this.text(icon, this.padRect(layout.rect), 12, 'right', 'bottom', false, 'FontAwesome');
 				}
 
 				// Find an inner rectangle within the main tool rectangle that avoids edges and connector labels
@@ -542,59 +635,83 @@
 				}
 			},
 
-			drawConnection(source: Connector, sink?: Connector | Point, upToDate: boolean = true) {
+			drawConnection(source: Connector, sink: Connector | Point | number, upToDate: boolean = true) {
 				const sourceCenter = {
 					x: source.rect.x + source.rect.width / 2,
 					y: source.rect.y + source.rect.height / 2,
 				};
-				const sinkCenter = !sink ? undefined : isPoint(sink) ? sink : {
-					x: sink.rect.x + sink.rect.width / 2,
-					y: sink.rect.y + sink.rect.height / 2,
-				};
+				const sinkCenter =
+					(typeof sink === 'number') ? undefined :
+					isPoint(sink) ? sink :
+					{
+						x: sink.rect.x + sink.rect.width / 2,
+						y: sink.rect.y + sink.rect.height / 2,
+					};
 				const style = this.getStyleForConnector(source);
 
 				// Line between the connectors
 				//TODO Bend differently if the output tool is below the input tool
 				this.ctx.beginPath();
 				this.ctx.moveTo(sourceCenter.x, sourceCenter.y);
+				// One of these blocks will always be true
 				if(sinkCenter) {
 					this.ctx.bezierCurveTo(
 						sourceCenter.x, sourceCenter.y + (source.type == 'input' ? -50 : 50),
 						sinkCenter.x, sinkCenter.y + (source.type == 'input' ? 50 : -50),
 						sinkCenter.x, sinkCenter.y,
 					);
-				} else {
-					this.ctx.lineTo(sourceCenter.x, sourceCenter.y + (source.type == 'input' ? -32 : 32));
+				} else if(typeof sink === 'number') {
+					this.ctx.lineTo(sourceCenter.x, sourceCenter.y + sink);
 				}
 				this.ctx.strokeStyle = upToDate ? style.stroke : '#888';
 				this.ctx.stroke();
 
 				// Connector endpoints (these are drawn after the line so the fill is on top)
-				for(const point of [sourceCenter, sinkCenter]) {
-					if(point) {
-						this.ctx.fillStyle = upToDate ? style.fill : '#aaa';
-						switch(style.shape) {
-							case 'rect':
-								this.ctx.strokeRect(point.x - CONNECTOR_RADIUS + 1, point.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
-								this.ctx.fillRect(point.x - CONNECTOR_RADIUS + 1, point.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
-								break;
-							case 'circle':
-								this.ctx.beginPath();
-								this.ctx.arc(point.x, point.y, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
-								this.ctx.stroke();
-								this.ctx.fill();
-								break;
-						}
-					} else {
-						const rect: Rect = {
-							x: sourceCenter.x - 8,
-							width: 16,
-							y: sourceCenter.y - 48,
-							height: 16,
-						}
-						this.ctx.fillStyle = '#888';
-						this.text('\uf057', rect, 16, 'center', 'bottom', false, 'FontAwesome');
+				const drawEndpoint = (center: Point) => {
+					this.ctx.fillStyle = upToDate ? style.fill : '#aaa';
+					switch(style.shape) {
+						case 'rect':
+							this.ctx.strokeRect(center.x - CONNECTOR_RADIUS + 1, center.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
+							this.ctx.fillRect(center.x - CONNECTOR_RADIUS + 1, center.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
+							break;
+						case 'circle':
+							this.ctx.beginPath();
+							this.ctx.arc(center.x, center.y, CONNECTOR_RADIUS - 1, 0, 2 * Math.PI);
+							this.ctx.stroke();
+							this.ctx.fill();
+							break;
 					}
+				};
+				drawEndpoint(sourceCenter);
+				if(sinkCenter) {
+					drawEndpoint(sinkCenter);
+				}
+			},
+
+			drawIndicator(layout: IndicatorLayout) {
+				const lineHeight = (layout.sink.y + layout.sink.height) - (layout.source.rect.y + layout.source.rect.height / 2);
+				switch(layout.type) {
+					case 'missing':
+						this.drawConnection(layout.source, lineHeight, false);
+						this.ctx.fillStyle = '#888';
+						this.text('\uf057', layout.sink, 16, 'center', 'bottom', false, 'FontAwesome');
+						break;
+					case 'constant':
+						this.drawConnection(layout.source, lineHeight, true);
+						// this.ctx.save();
+						// this.ctx.rotate(-Math.PI / 2);
+						// const rect: Rect = {
+						// 	x: -layout.sink.y,
+						// 	y: layout.sink.x,
+						// 	width: layout.sink.width,
+						// 	height: layout.sink.height,
+						// };
+						this.ctx.fillRect(layout.sink.x, layout.sink.y, layout.sink.width, layout.sink.height);
+						this.ctx.strokeRect(layout.sink.x, layout.sink.y, layout.sink.width, layout.sink.height);
+						this.ctx.fillStyle = '#fff';
+						this.text(layout.output.tool.name, this.padRect(layout.sink, this.ctx.lineWidth + 1), 16, 'center', 'middle', true);
+						// this.ctx.restore();
+						break;
 				}
 			},
 
@@ -623,7 +740,7 @@
 				}
 
 				// Figure out what the mouse is currently over. Since tools are drawn in order, later tools end up on top of earlier tools, so we use the latest match in the layout
-				for(const { tool, rect, inputs, outputs } of reversed(this.layout)) {
+				for(const { tool, rect, inputs, outputs } of reversed(this.layout.tools)) {
 					for(const connector of [...inputs, ...outputs]) {
 						if(pointInRect(loc, connector.rect)) {
 							return this.mouse = {
@@ -643,6 +760,17 @@
 					}
 				}
 
+				for(const layout of this.layout.indicators) {
+					if(layout.type == 'constant' && pointInRect(loc, layout.sink)) {
+						return this.mouse = {
+							state: 'over-indicator',
+							loc: pointRelativeTo(loc, layout.sink),
+							layout,
+							valid: !this.connecting || (this.connecting.type == 'input'),
+						};
+					}
+				}
+
 				this.mouse = {
 					state: 'over-background',
 					loc,
@@ -659,7 +787,7 @@
 			mousedown(e: MouseEvent) {
 				switch(this.mouse.state) {
 					case 'over-background':
-						if(this.layout.length > 0) {
+						if(this.layout.tools.length > 0) {
 							this.mouse = {
 								state: 'dragging-background',
 								loc: this.mouse.loc,
@@ -705,6 +833,16 @@
 							this.connecting = this.mouse.connector;
 						}
 						break;
+					case 'over-indicator':
+						if(!this.mouse.valid) {
+							// Ignore
+						} else if(this.connecting) {
+							this.toolManager.connect(this.connecting.field as Input, this.mouse.layout.output);
+							this.connecting = undefined;
+						} else {
+							this.toolManager.selectedTool = this.mouse.layout.output.tool;
+						}
+						break;
 				}
 			},
 
@@ -730,11 +868,16 @@
 					case 'over-tool':
 						this.toolManager.removeTool(this.mouse.tool);
 						break;
+					case 'over-indicator':
+						if(this.mouse.layout.type == 'constant') {
+							this.disconnect(this.mouse.layout.source as InputConnector);
+						}
+						break;
 				}
 			},
 
 			wheel(e: WheelEvent) {
-				if(this.layout.length > 0) {
+				if(this.layout.tools.length > 0) {
 					if(e.ctrlKey) {
 						this.viewport.scale -= e.deltaY / 200;
 					} else {

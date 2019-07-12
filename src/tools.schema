@@ -12,19 +12,24 @@
 			"type": "array",
 			"items": {
 				"type": "object",
-				"required": [ "type", "name", "loc" ],
+				"required": [ "type", "name" ],
 				"additionalProperties": false,
 				"properties": {
 					"type": { "type": "string" },
 					"name": { "type": "string" },
 					"loc": {
-						"type": "object",
-						"required": [ "x", "y" ],
-						"additionalProperties": false,
-						"properties": {
-							"x": { "type": "number" },
-							"y": { "type": "number" }
-						}
+						"oneOf": [
+							{ "type": "null" },
+							{
+								"type": "object",
+								"required": [ "x", "y" ],
+								"additionalProperties": false,
+								"properties": {
+									"x": { "type": "number" },
+									"y": { "type": "number" }
+								}
+							}
+						]
 					},
 					"inputs": {
 						"type": "object",

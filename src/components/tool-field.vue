@@ -9,7 +9,12 @@
 			<span v-if="io.io == 'input' && io.connection" class="clickable" @click="disconnect(io)">
 				<b-tag type="is-primary">
 					<i class="fas fa-link"></i>
-					Connected to {{ io.connection.output.tool.name }}.{{ io.connection.output.name }}
+					<template v-if="toolIsConstant(io.connection.output.tool)">
+						Connected to constant <code>{{ io.connection.output.tool.name}}</code>
+					</template>
+					<template v-else>
+						Connected to <code>{{ io.connection.output.tool.name }}.{{ io.connection.output.name }}</code>
+					</template>
 				</b-tag>
 			</span>
 			<b-dropdown>
@@ -34,7 +39,7 @@
 </template>
 
 <script lang="ts">
-	import { Input, Output, ToolState } from '@/tools';
+	import { Input, Output, ToolState, ToolInst, ConstantTool } from '@/tools';
 
 	import Vue, { PropType } from 'vue';
 	import ToolIOComponent from '@/components/tool-io.vue';
@@ -69,6 +74,9 @@
 				const tool = this.toolManager.addConstant(input.name, input.val);
 				this.toolManager.connect(input, tool.output);
 			},
+			toolIsConstant(tool: ToolInst) {
+				return (tool instanceof ConstantTool);
+			},
 		},
 	});
 </script>
@@ -79,9 +87,16 @@
 			flex: 1 0 calc(100% - 20px);
 		}
 
-		label > * {
-			display: inline-flex;
-			margin-left: 10px;
+		label {
+			> * {
+				display: inline-flex;
+				margin-left: 10px;
+			}
+
+			.tag code {
+				margin-left: 1px;
+				border-radius: 4px;
+			}
 		}
 	}
 

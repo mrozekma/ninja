@@ -1,7 +1,5 @@
 import importSchema, { Tools as SerializedData } from './tools.schema';
 
-//@ts-ignore No declaration file
-import cleanDeep from 'clean-deep';
 import { Validator } from 'jsonschema';
 
 export type ToolDef<T extends ToolInst = ToolInst> = {
@@ -254,7 +252,7 @@ export enum ToolState { stale = 'stale', running = 'running', good = 'good', bad
 
 export abstract class ToolInst {
 	private _name: string;
-	private _loc: Point;
+	private _loc: Point | undefined;
 	private _state: ToolState;
 	private _error: string | undefined;
 
@@ -271,8 +269,8 @@ export abstract class ToolInst {
 	get name(): string { return this._name; }
 	set name(name: string) { this._name = name; }
 
-	get loc(): Point { return this._loc; }
-	set loc(loc: Point) { this._loc = loc; }
+	get loc(): Point | undefined { return this._loc; }
+	set loc(loc: Point | undefined) { this._loc = loc; }
 
 	get state(): ToolState { return this._state; }
 	set state(state: ToolState) { this._state = state; }
@@ -296,6 +294,22 @@ export abstract class ToolInst {
 
 	set outputs(outputs: Readonly<Output[]>) {
 		this.allOutputs.splice(0, this.allOutputs.length, ...outputs);
+	}
+
+	getDeclaredInput(name: string): Input {
+		const rtn = this.allInputs.find(input => input.name == name) || this.inputs.find(input => input.name === name);
+		if(rtn === undefined) {
+			throw new Error(`Unknown input: ${this.name}.${name}`);
+		}
+		return rtn;
+	}
+
+	getDeclaredOutput(name: string): Output {
+		const rtn = this.allOutputs.find(output => output.name == name) || this.outputs.find(output => output.name === name);
+		if(rtn === undefined) {
+			throw new Error(`Unknown input: ${this.name}.${name}`);
+		}
+		return rtn;
 	}
 
 	setInputVal(input: Input, val: IOValTypes) {
@@ -382,7 +396,7 @@ export abstract class ToolInst {
 		return {
 			type: this.def.name,
 			name: this.name,
-			loc: this.loc,
+			loc: this.loc || null,
 			inputs: this.inputs.reduce<{ [K: string]: SerializedIOValTypes }>((map, input) => {
 				if(input.connection === undefined) {
 					map[input.name] = Buffer.isBuffer(input.val) ? input.val.toJSON() : input.val;
@@ -464,7 +478,16 @@ export class PassthroughTool extends ToolInst {
 	}
 }
 
-class ConstantTool extends PassthroughTool {
+export class ConstantTool extends PassthroughTool {
+	get loc() {
+		return undefined;
+	}
+	set loc(pt: Point | undefined) {
+		if(pt !== undefined) {
+			throw new Error("Can't set location of constant tool");
+		}
+	}
+
 	setInputVal(input: Input, val: IOValTypes) {
 		if(input === this.inp) {
 			if(Buffer.isBuffer(val)) {
@@ -646,8 +669,16 @@ export class ToolManager {
 		if(input.connection === undefined) {
 			throw new Error(`Tried to disconnect independent input ${input.tool.name}.${input.name}`);
 		}
-		const upToDate = input.connection.upToDate;
+		const { upToDate, output: { tool: outputTool } } = input.connection;
 		input.connection = undefined;
+
+		if(outputTool instanceof ConstantTool) {
+			// Check if anything else is connected to this constant. If not, delete it
+			if(!this.tools.flatMap(tool => tool.inputs).some(input => input.connection && input.connection.output.tool === outputTool)) {
+				this.removeTool(outputTool);
+			}
+		}
+
 		// It's unlikely that a disconnection requires an update, but it might be fixing a cycle
 		if(!upToDate) {
 			this.updateData(input);
@@ -835,7 +866,8 @@ export class ToolManager {
 			watches: Array.from(this.iterWatches(false)).map(io => [ io.tool.name, io.name ]),
 		};
 		switch(fmt) {
-			case 'compact': return JSON.stringify(cleanDeep(obj));
+			//TODO Need a better way to compact obj (was using clean-deep)
+			case 'compact': return JSON.stringify(obj);
 			case 'friendly': return JSON.stringify(obj, null, '\t');
 			case 'base64': return Buffer.from(JSON.stringify(obj)).toString('base64'); //TODO URI encoding
 		}
@@ -859,7 +891,7 @@ export class ToolManager {
 			}
 			const inst = def.gen(tool.name);
 			insts.set(tool.name, inst);
-			inst.loc = tool.loc;
+			inst.loc = tool.loc || undefined;
 			const inputVals = Object.entries(tool.inputs || {});
 			if(inst.inputDeserializeOrder.length > 0) {
 				const order = inst.inputDeserializeOrder;
@@ -872,10 +904,7 @@ export class ToolManager {
 				});
 			}
 			for(const [ name, val ] of inputVals) {
-				const input = inst.inputs.find(input => input.name == name);
-				if(input === undefined) {
-					throw new Error(`Unknown input: ${tool.name}.${name}`);
-				}
+				const input = inst.getDeclaredInput(name);
 				if(typeof val === 'object' && !Array.isArray(val)) {
 					switch(val.type) {
 						case 'Buffer':
@@ -895,18 +924,12 @@ export class ToolManager {
 			if(tool.connections) {
 				const inst = insts.get(tool.name)!;
 				for(const [ inputName, [ outputToolName, outputName ]] of Object.entries(tool.connections)) {
-					const input = inst.inputs.find(input => input.name == inputName);
-					if(input === undefined) {
-						throw new Error(`Unknown input: ${tool.name}.${inputName}`);
-					}
+					const input = inst.getDeclaredInput(inputName);
 					const outputTool = insts.get(outputToolName);
 					if(outputTool === undefined) {
 						throw new Error(`Unknown output tool connected to ${tool.name}.${inputName}: ${outputToolName}`);
 					}
-					const output = outputTool.outputs.find(output => output.name == outputName);
-					if(output === undefined) {
-						throw new Error(`Unknown output: ${outputToolName}.${outputName}`);
-					}
+					const output = outputTool.getDeclaredOutput(outputName);
 					input.connection = {
 						output,
 						error: undefined,
