@@ -162,7 +162,7 @@
 	import { saveAs } from 'file-saver';
 	import * as clipboard from 'clipboard-polyfill';
 
-	import { ToolInst, ToolError, ToolState, Input, Output } from './tools';
+	import { ToolInst, ToolError, ToolState, Input, Output, Viewport } from './tools';
 	import toolGroups from './tools/groups';
 
 	//@ts-ignore No declaration file
@@ -319,8 +319,18 @@
 			loadFromString(data: string) {
 				const old = [...this.toolManager.tools];
 				try {
-					this.toolManager.deserialize(data, toolGroups.map(group => group.tools).flat(), (this.$refs.dfcanvas as any).viewport);
+					const ret = this.toolManager.deserialize(data, toolGroups.map(group => group.tools).flat());
+					if(ret.viewport !== undefined) {
+						const viewport: Viewport = (this.$refs.dfcanvas as any).viewport;
+						viewport.translation.x = ret.viewport.translation.x;
+						viewport.translation.y = ret.viewport.translation.y;
+						viewport.scale = ret.viewport.scale;
+					}
+					if(ret.lockAutoLayout !== undefined) {
+						this.lockAutoLayout = ret.lockAutoLayout;
+					}
 					this.toolManager.selectedTool = undefined;
+					//TODO Undo the viewport/auto-layout changes. Probably better to serialize the old state and make the undo deserialize it
 					this.$snackbar.open({
 						message: 'Tools loaded',
 						type: 'is-info',
@@ -355,11 +365,11 @@
 				if(!this.anyTools) {
 					return this.showNoToolsWarning();
 				}
-				const viewport = (this.$refs.dfcanvas as any).viewport;
+				const serialize = (fmt: 'base64' | 'compact' | 'friendly') => this.toolManager.serialize(fmt, (this.$refs.dfcanvas as any).viewport, this.lockAutoLayout);
 				// Anti-pattern ahoy
 				switch(target) {
 					case 'browser':
-						localStorage.setItem(`savedTool.${name}`, this.toolManager.serialize('compact', viewport));
+						localStorage.setItem(`savedTool.${name}`, serialize('compact'));
 						this.savedScripts = this.findSavedNames();
 						this.$snackbar.open({
 							message: "Script saved",
@@ -368,10 +378,10 @@
 						});
 						break;
 					case 'disk':
-						saveAs(new Blob([ this.toolManager.serialize('friendly', viewport) ], { type: 'text/plain' }), `${name}.ninja`);
+						saveAs(new Blob([ serialize('friendly') ], { type: 'text/plain' }), `${name}.ninja`);
 						break;
 					case 'clipboard':
-						clipboard.writeText(window.location.href.split('#')[0] + '#' + this.toolManager.serialize('base64', viewport))
+						clipboard.writeText(window.location.href.split('#')[0] + '#' + serialize('base64'))
 							.then(() => this.$snackbar.open({
 								message: "Link copied to clipboard",
 								type: 'is-info',

@@ -854,15 +854,16 @@ export class ToolManager {
 		}
 	}
 
-	serialize(fmt: 'compact' | 'friendly' | 'base64', viewport?: Viewport): string {
+	serialize(fmt: 'compact' | 'friendly' | 'base64', viewport?: Viewport, lockAutoLayout?: boolean): string {
 		const obj: SerializedData = {
 			version: 1,
 			tools: this.tools.map(tool => tool.serialize()),
-			viewport: viewport ? {
+			viewport: (viewport === undefined) ? undefined : {
 				x: viewport.translation.x,
 				y: viewport.translation.y,
 				scale: viewport.scale,
-			} : undefined,
+			},
+			lockAutoLayout: (lockAutoLayout === undefined) ? undefined : lockAutoLayout,
 			watches: Array.from(this.iterWatches(false)).map(io => [ io.tool.name, io.name ]),
 		};
 		switch(fmt) {
@@ -874,7 +875,7 @@ export class ToolManager {
 	}
 
 	// availableDefs is passed in here because importing toolGroups causes a circular dependency I can't easily resolve
-	deserialize(data: string, availableDefs: ToolDef[], viewport?: Viewport) {
+	deserialize(data: string, availableDefs: ToolDef[]): { viewport?: Viewport, lockAutoLayout?: boolean} {
 		if(!data.startsWith('{')) {
 			data = Buffer.from(data, 'base64').toString('utf8');
 		}
@@ -963,10 +964,15 @@ export class ToolManager {
 		// Success. Replace the existing tools with the loaded set
 		this.tools = Array.from(insts.values());
 
-		if(viewport !== undefined && obj.viewport !== undefined) {
-			viewport.translation.x = obj.viewport.x;
-			viewport.translation.y = obj.viewport.y;
-			viewport.scale = obj.viewport.scale;
-		}
+		return {
+			viewport: obj.viewport ? {
+				translation: {
+					x: obj.viewport.x,
+					y: obj.viewport.y,
+				},
+				scale: obj.viewport.scale,
+			} : undefined,
+			lockAutoLayout: obj.lockAutoLayout,
+		};
 	}
 }

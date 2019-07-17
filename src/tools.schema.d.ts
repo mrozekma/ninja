@@ -37,4 +37,5 @@ export interface Tools {
     y: number;
     scale: number;
   };
+  lockAutoLayout?: boolean;
 }

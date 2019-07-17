@@ -90,6 +90,7 @@
 				"y": { "type": "number" },
 				"scale": { "type": "number" }
 			}
-		}
+		},
+		"lockAutoLayout": { "type": "boolean" }
 	}
 }
