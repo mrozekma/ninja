@@ -1,6 +1,6 @@
 import { makeDef, ToolInst, Input, Output } from '@/tools';
 
-class StringEncode extends ToolInst {
+class StringEncodeTool extends ToolInst {
 	private inp = this.makeStringInput('in', 'Input');
 	private encoding = this.makeEnumInput<BufferEncoding>('fmt', 'Encoding', 'utf8', [ "ascii", "utf8", "utf-8", "utf16le", "ucs2", "ucs-2", "base64", "latin1", "binary", "hex" ]);
 	private out = this.makeBytesOutput('out', 'Output');
@@ -10,7 +10,7 @@ class StringEncode extends ToolInst {
 	}
 }
 
-class StringDecode extends ToolInst {
+class StringDecodeTool extends ToolInst {
 	private inp = this.makeBytesInput('in', 'Input');
 	private encoding = this.makeEnumInput<BufferEncoding>('fmt', 'Encoding', 'utf8', [ "ascii", "utf8", "utf-8", "utf16le", "ucs2", "ucs-2", "base64", "latin1", "binary", "hex" ]);
 	private out = this.makeStringOutput('out', 'Output');
@@ -20,7 +20,7 @@ class StringDecode extends ToolInst {
 	}
 }
 
-class TextSplit extends ToolInst {
+class TextSplitTool extends ToolInst {
 	private inp = this.makeStringInput('in', 'Input');
 	private split = this.makeStringInput('on', 'Split');
 	private out = this.makeStringArrayOutput('out', 'Parts');
@@ -30,7 +30,7 @@ class TextSplit extends ToolInst {
 	}
 }
 
-class RegexMatch extends ToolInst {
+class RegexMatchTool extends ToolInst {
 	private inp = this.makeStringInput('in', 'Input');
 	private regex = this.makeStringInput('pat', 'Regex pattern');
 	//TODO Flags?
@@ -45,7 +45,7 @@ class RegexMatch extends ToolInst {
 	}
 }
 
-class TextArrayIndex extends ToolInst {
+class TextArrayIndexTool extends ToolInst {
 	private inp = this.makeStringArrayInput('in', 'Input');
 	private idx = this.makeNumberInput('idx', 'Index', 0, 0, 0);
 	private out = this.makeStringOutput('out', 'Entry 0');
@@ -91,11 +91,18 @@ class Base64Tool extends ToolInst {
 	}
 }
 
+export class JSONDisplayTool extends ToolInst {
+	private str = this.makeStringInput('str', 'JSON string');
+	get json() { return this.str.val; }
+	async runImpl() {}
+}
+
 export default [
-	makeDef(StringEncode, 'Encode', 'String encode'),
-	makeDef(StringDecode, 'Decode', 'String decode'),
-	makeDef(TextSplit, 'Split', 'Split text'),
-	makeDef(RegexMatch, 'Regex', 'Regular expression match'),
-	makeDef(TextArrayIndex, 'Index', 'Index into an array'),
+	makeDef(StringEncodeTool, 'Encode', 'String encode'),
+	makeDef(StringDecodeTool, 'Decode', 'String decode'),
+	makeDef(TextSplitTool, 'Split', 'Split text'),
+	makeDef(RegexMatchTool, 'Regex', 'Regular expression match'),
+	makeDef(TextArrayIndexTool, 'Index', 'Index into an array'),
 	makeDef(Base64Tool, 'Base64', 'Base64 encoder/decoder'),
+	makeDef(JSONDisplayTool, 'JSON display', 'JSON display', undefined, () => import('@/tools/json-viewer.vue')),
 ];
