@@ -864,6 +864,7 @@ export class ToolManager {
 			throw e;
 		}
 
+		this.updateSource = undefined;
 		console.log('Done. Remaining:', outOfDate.size);
 
 		for(const tool of outOfDate) {
