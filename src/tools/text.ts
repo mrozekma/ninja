@@ -1,4 +1,4 @@
-import { makeDef, ToolInst, Input } from '@/tools';
+import { makeDef, ToolInst, Input, Output } from '@/tools';
 
 class StringEncode extends ToolInst {
 	private inp = this.makeStringInput('in', 'Input');
@@ -30,6 +30,21 @@ class TextSplit extends ToolInst {
 	}
 }
 
+class RegexMatch extends ToolInst {
+	private inp = this.makeStringInput('in', 'Input');
+	private regex = this.makeStringInput('pat', 'Regex pattern');
+	//TODO Flags?
+	private out = this.makeStringArrayOutput('out', 'Groups');
+
+	async runImpl() {
+		const match = this.inp.val.match(new RegExp(this.regex.val));
+		if(match === null) {
+			throw new Error("Pattern does not match");
+		}
+		this.out.val = Array.from(match).slice(1);
+	}
+}
+
 class TextArrayIndex extends ToolInst {
 	private inp = this.makeStringArrayInput('in', 'Input');
 	private idx = this.makeNumberInput('idx', 'Index', 0, 0, 0);
@@ -51,9 +66,36 @@ class TextArrayIndex extends ToolInst {
 	}
 }
 
+class Base64Tool extends ToolInst {
+	private inp: Input = this.makeStringInput('in', '');
+	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Encode', 'Decode' ]);
+	private out: Output = this.makeStringOutput('out', '');
+
+	protected onInputSet(input: Input) {
+		if(input === this.dir) {
+			const dir = this.dir.val;
+			const pt = dir ? this.inp : this.out, enc = dir ? this.out : this.inp;
+			pt.type = 'bytes';
+			pt.description = 'Plaintext';
+			enc.type = 'string';
+			enc.description = 'Encoded';
+		}
+	}
+
+	async runImpl() {
+		if(this.dir.val) {
+			this.out.val = (this.inp.val as Buffer).toString('base64');
+		} else {
+			this.out.val = Buffer.from(this.inp.val as string, 'base64');
+		}
+	}
+}
+
 export default [
 	makeDef(StringEncode, 'Encode', 'String encode'),
 	makeDef(StringDecode, 'Decode', 'String decode'),
 	makeDef(TextSplit, 'Split', 'Split text'),
+	makeDef(RegexMatch, 'Regex', 'Regular expression match'),
 	makeDef(TextArrayIndex, 'Index', 'Index into an array'),
+	makeDef(Base64Tool, 'Base64', 'Base64 encoder/decoder'),
 ];

@@ -672,9 +672,9 @@
 				this.ctx.stroke();
 
 				// Connector endpoints (these are drawn after the line so the fill is on top)
-				const drawEndpoint = (center: Point) => {
+				const drawEndpoint = (center: Point, shape: 'rect' | 'circle') => {
 					this.ctx.fillStyle = upToDate ? style.fill : '#aaa';
-					switch(style.shape) {
+					switch(shape) {
 						case 'rect':
 							this.ctx.strokeRect(center.x - CONNECTOR_RADIUS + 1, center.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
 							this.ctx.fillRect(center.x - CONNECTOR_RADIUS + 1, center.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
@@ -687,9 +687,10 @@
 							break;
 					}
 				};
-				drawEndpoint(sourceCenter);
+				drawEndpoint(sourceCenter, style.shape);
 				if(drawSinkpoint) {
-					drawEndpoint(sinkCenter);
+					const sinkStyle = isPoint(sink) ? style : this.getStyleForConnector(sink);
+					drawEndpoint(sinkCenter, sinkStyle.shape);
 				}
 			},
 
