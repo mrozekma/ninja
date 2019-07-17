@@ -20,6 +20,8 @@ class AssertEqual extends ToolInst {
 		if(Array.isArray(val1) && Array.isArray(val2)) {
 			const arr1 = val1 as (string | boolean | number)[], arr2 = val2 as (string | boolean | number)[];
 			this.eq.val = !arr1.some((e, idx) => e != arr2[idx]);
+		} else if(Buffer.isBuffer(val1) && Buffer.isBuffer(val2)) {
+			this.eq.val = val1.equals(val2);
 		} else {
 			this.eq.val = val1 == val2;
 		}
