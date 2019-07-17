@@ -9,8 +9,12 @@
 
 <script lang="ts">
 	//TODO Allow copying outputs
-	import { ToolInst } from '@/tools';
+	import { ToolInst, ToolDef } from '@/tools';
 	import groups from '@/tools/groups';
+
+	function defToViewName(def: ToolDef) {
+		return 'tool-viewer-' + def.name.toLowerCase().replace(/[^-a-z-]/g, '-');
+	}
 
 	const viewers: {[K: string]: (() => Promise<any>)} = {
 		'tool-auto-viewer': () => import('@/tools/auto-viewer.vue'),
@@ -18,7 +22,7 @@
 	for(const group of groups) {
 		for(const def of group.tools) {
 			if(def.viewer) {
-				viewers[`tool-viewer:${def.name}`] = def.viewer;
+				viewers[defToViewName(def)] = def.viewer;
 			}
 		}
 	}
@@ -29,7 +33,7 @@
 		computed: {
 			viewerComponent(): string | undefined {
 				const tool = this.toolManager.selectedTool;
-				return !tool ? undefined : tool.def.viewer ? `tool-viewer:${tool.def.name}` : 'tool-auto-viewer';
+				return !tool ? undefined : tool.def.viewer ? defToViewName(tool.def) : 'tool-auto-viewer';
 			},
 			message(): ToolInst["stateInfo"] {
 				const tool = this.toolManager.selectedTool;

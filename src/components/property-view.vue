@@ -16,8 +16,12 @@
 </template>
 
 <script lang="ts">
-	import { ToolInst, ToolState } from '@/tools';
+	import { ToolInst, ToolState, ToolDef } from '@/tools';
 	import groups from '@/tools/groups';
+
+	function defToViewName(def: ToolDef) {
+		return 'tool-editor-' + def.name.toLowerCase().replace(/[^-a-z-]/g, '-');
+	}
 
 	const editors: {[K: string]: (() => Promise<any>)} = {
 		'tool-auto-editor': () => import('@/tools/auto-editor.vue'),
@@ -25,7 +29,7 @@
 	for(const group of groups) {
 		for(const def of group.tools) {
 			if(def.editor) {
-				editors[`tool-editor:${def.name}`] = def.editor;
+				editors[defToViewName(def)] = def.editor;
 			}
 		}
 	}
@@ -41,7 +45,7 @@
 		computed: {
 			editorComponent(): string | undefined {
 				const tool = this.toolManager.selectedTool;
-				return !tool ? undefined : tool.def.editor ? `tool-editor:${tool.def.name}` : 'tool-auto-editor';
+				return !tool ? undefined : tool.def.editor ? defToViewName(tool.def) : 'tool-auto-editor';
 			},
 			state(): State {
 				const tool = this.toolManager.selectedTool;
