@@ -1,9 +1,9 @@
 import { makeDef, ToolInst, Input, Output, convertToInputType } from '@/tools';
 
 class AssertEqual extends ToolInst {
+	private type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean', 'bytes', 'string[]', 'number[]', 'boolean[]' ]);
 	private in1: Input = this.makeNumberInput('in1', 'Input #1');
 	private in2: Input = this.makeNumberInput('in2', 'Input #2');
-	private type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean', 'bytes', 'string[]', 'number[]', 'boolean[]' ]);
 	private eq: Output = this.makeBooleanOutput('eq', 'Equal?');
 
 	protected onInputSet(input: Input) {

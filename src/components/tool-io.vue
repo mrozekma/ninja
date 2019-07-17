@@ -85,7 +85,7 @@
 				if(this.loading) {
 					return "Loading...";
 				}
-				const [ enabledLabel, disabledLabel ] = this.io.labels || [ 'Enabled', 'Disabled' ];
+				const [ enabledLabel, disabledLabel ] = this.io.labels || (this.io.io == 'input' ? [ 'Enabled', 'Disabled' ] : [ 'Yes', 'No' ]);
 				return this.val ? enabledLabel : disabledLabel;
 			},
 		},

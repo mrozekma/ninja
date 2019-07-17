@@ -281,6 +281,7 @@
 				const connections: ConnectionLayout[] = [];
 				const indicators: IndicatorLayout[] = [];
 				for(const toolLayout of toolLayouts) {
+					let minX = 0;
 					for(const inputCon of toolLayout.inputs) {
 						if(inputCon.field.connection === undefined) {
 							continue;
@@ -289,18 +290,20 @@
 						if(output.tool instanceof ConstantTool) {
 							this.ctx.font = `16px ${FONT}`;
 							const width = this.ctx.measureText(output.tool.name).width;
-							const extraPadding = this.ctx.lineWidth;
-							indicators.push({
+							const extraPadding = 6;
+							const indicator: IndicatorLayout = {
 								type: 'constant',
 								source: inputCon,
 								sink: {
-									x: inputCon.rect.x + inputCon.rect.width / 2 - width / 2 - extraPadding, // To center this above the source, we need inputCon.rect.x + inputCon.rect.width / 2 == sink.x + sink.width / 2
+									x: Math.max(inputCon.rect.x + inputCon.rect.width / 2 - (width + extraPadding) / 2, minX), // To center this above the source, we need inputCon.rect.x + inputCon.rect.width / 2 == sink.x + sink.width / 2
 									y: inputCon.rect.y - 32 - extraPadding * 2,
 									width: width + extraPadding,
 									height: 16 + extraPadding,
 								},
 								output,
-							});
+							};
+							indicators.push(indicator);
+							minX = indicator.sink.x + indicator.sink.width + extraPadding;
 						} else {
 							const outputToolLayout = toolLayouts.find(layout => layout.tool === output.tool);
 							const outputCon = outputToolLayout ? outputToolLayout.outputs.find(layout => layout.field === output) : undefined;
@@ -331,15 +334,18 @@
 
 			autoLayout() {
 				const g = new dagre.graphlib.Graph();
-				g.setGraph({});
+				g.setGraph({
+					ranksep: 75,
+				});
 				g.setDefaultEdgeLabel(() => ({}));
 				const locTools = this.toolManager.tools.filter(tool => tool.loc !== undefined);
+				console.log(locTools);
 				for(const tool of locTools) {
 					g.setNode(tool.name, { width: TOOL_WIDTH, height: TOOL_HEIGHT });
 				}
 				for(const tool of locTools) {
 					for(const input of tool.inputs) {
-						if(input.connection !== undefined) {
+						if(input.connection !== undefined && !(input.connection.output.tool instanceof ConstantTool)) {
 							g.setEdge(input.connection.output.tool.name, input.tool.name);
 						}
 					}
@@ -635,34 +641,27 @@
 				}
 			},
 
-			drawConnection(source: Connector, sink: Connector | Point | number, upToDate: boolean = true) {
+			drawConnection(source: Connector, sink: Connector | Point, upToDate: boolean = true, drawSinkpoint: boolean = true) {
 				const sourceCenter = {
 					x: source.rect.x + source.rect.width / 2,
 					y: source.rect.y + source.rect.height / 2,
 				};
-				const sinkCenter =
-					(typeof sink === 'number') ? undefined :
-					isPoint(sink) ? sink :
-					{
-						x: sink.rect.x + sink.rect.width / 2,
-						y: sink.rect.y + sink.rect.height / 2,
-					};
+				const sinkCenter = isPoint(sink) ? sink : {
+					x: sink.rect.x + sink.rect.width / 2,
+					y: sink.rect.y + sink.rect.height / 2,
+				};
 				const style = this.getStyleForConnector(source);
 
 				// Line between the connectors
 				//TODO Bend differently if the output tool is below the input tool
 				this.ctx.beginPath();
 				this.ctx.moveTo(sourceCenter.x, sourceCenter.y);
-				// One of these blocks will always be true
-				if(sinkCenter) {
-					this.ctx.bezierCurveTo(
-						sourceCenter.x, sourceCenter.y + (source.type == 'input' ? -50 : 50),
-						sinkCenter.x, sinkCenter.y + (source.type == 'input' ? 50 : -50),
-						sinkCenter.x, sinkCenter.y,
-					);
-				} else if(typeof sink === 'number') {
-					this.ctx.lineTo(sourceCenter.x, sourceCenter.y + sink);
-				}
+				const cpDist = Math.min(50, Math.abs(sourceCenter.y - sinkCenter.y) / 1.5);
+				this.ctx.bezierCurveTo(
+					sourceCenter.x, sourceCenter.y + (source.type == 'input' ? -cpDist : cpDist),
+					sinkCenter.x, sinkCenter.y + (source.type == 'input' ? cpDist : -cpDist),
+					sinkCenter.x, sinkCenter.y,
+				);
 				this.ctx.strokeStyle = upToDate ? style.stroke : '#888';
 				this.ctx.stroke();
 
@@ -683,21 +682,28 @@
 					}
 				};
 				drawEndpoint(sourceCenter);
-				if(sinkCenter) {
+				if(drawSinkpoint) {
 					drawEndpoint(sinkCenter);
 				}
 			},
 
 			drawIndicator(layout: IndicatorLayout) {
-				const lineHeight = (layout.sink.y + layout.sink.height) - (layout.source.rect.y + layout.source.rect.height / 2);
+				// const lineHeight = (layout.sink.y + layout.sink.height) - (layout.source.rect.y + layout.source.rect.height / 2);
+				// console.log(lineHeight);
 				switch(layout.type) {
 					case 'missing':
-						this.drawConnection(layout.source, lineHeight, false);
+						this.drawConnection(layout.source, {
+							x: layout.sink.x + layout.sink.width / 2,
+							y: layout.sink.y + layout.sink.height,
+						}, false, false);
 						this.ctx.fillStyle = '#888';
 						this.text('\uf057', layout.sink, 16, 'center', 'bottom', false, 'FontAwesome');
 						break;
 					case 'constant':
-						this.drawConnection(layout.source, lineHeight, true);
+						this.drawConnection(layout.source, {
+							x: layout.sink.x + layout.sink.width / 2,
+							y: layout.sink.y + layout.sink.height,
+						}, true, false);
 						// this.ctx.save();
 						// this.ctx.rotate(-Math.PI / 2);
 						// const rect: Rect = {
@@ -707,9 +713,11 @@
 						// 	height: layout.sink.height,
 						// };
 						this.ctx.fillRect(layout.sink.x, layout.sink.y, layout.sink.width, layout.sink.height);
+						this.ctx.lineWidth = 1;
 						this.ctx.strokeRect(layout.sink.x, layout.sink.y, layout.sink.width, layout.sink.height);
 						this.ctx.fillStyle = '#fff';
-						this.text(layout.output.tool.name, this.padRect(layout.sink, this.ctx.lineWidth + 1), 16, 'center', 'middle', true);
+						this.text(layout.output.tool.name, this.padRect(layout.sink, this.ctx.lineWidth), 16, 'center', 'middle', false);
+						this.ctx.lineWidth = 3;
 						// this.ctx.restore();
 						break;
 				}
