@@ -1,11 +1,11 @@
 <template>
-	<div class="auto-editor">
-		<tool-field v-for="input in inputs" :key="input.name" :io="input"></tool-field>
+	<div class="auto-viewer">
+		<tool-field v-for="output in outputs" :key="output.name" :io="output"></tool-field>
 	</div>
 </template>
 
 <script lang="ts">
-	import { Input, ToolInst } from '@/tools';
+	import { Output, ToolInst } from '@/tools';
 
 	import Vue, { PropType } from 'vue';
 	import ToolFieldComponent from '@/components/tool-field.vue';
@@ -15,21 +15,22 @@
 			tool: Object as PropType<ToolInst>,
 		},
 		computed: {
-			inputs(): Readonly<Input[]> {
-				return this.tool ? this.tool.inputs : [];
+			outputs(): Readonly<Output[]> {
+				return this.tool ? this.tool.outputs : [];
 			},
 		},
 	});
 </script>
 
 <style lang="less" scoped>
-	.auto-editor {
+	.auto-viewer {
 		display: flex;
 		flex-wrap: wrap;
 
 		> * {
 			flex: 1 0 auto;
 			margin: 10px;
+
 		}
 	}
 </style>

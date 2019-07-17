@@ -11,17 +11,15 @@
 				<b-input :value="toolManager.selectedTool.def.name" disabled></b-input>
 			</b-field>
 		</div>
-		<component v-if="editorComponent" :is="editorComponent"></component>
+		<component v-if="editorComponent" :is="editorComponent" :tool="toolManager.selectedTool"></component>
 	</div>
 </template>
 
 <script lang="ts">
-	//TODO Tool deletion
 	import { ToolInst, ToolState } from '@/tools';
 	import groups from '@/tools/groups';
 
 	const editors: {[K: string]: (() => Promise<any>)} = {
-		//@ts-ignore
 		'tool-auto-editor': () => import('@/tools/auto-editor.vue'),
 	};
 	for(const group of groups) {

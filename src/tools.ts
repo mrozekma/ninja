@@ -7,14 +7,16 @@ export type ToolDef<T extends ToolInst = ToolInst> = {
 	description: string;
 	gen: (name: string) => T;
 	editor?: () => Promise<any>;
+	viewer?: () => Promise<any>;
 }
 
-export function makeDef<T extends ToolInst>(ctor: { new(def: ToolDef<T>, name: string): T }, name: string, description: string, editor?: () => Promise<any>): ToolDef<T> {
+export function makeDef<T extends ToolInst>(ctor: { new(def: ToolDef<T>, name: string): T }, name: string, description: string, editor?: () => Promise<any>, viewer?: () => Promise<any>): ToolDef<T> {
 	const rtn: ToolDef<T> = {
 		name,
 		description,
 		gen: (name: string) => new ctor(rtn, name),
 		editor,
+		viewer,
 	}
 	return rtn;
 }
@@ -460,8 +462,8 @@ export abstract class ToolInst {
 
 // Abstract interface for a tool that passes its input through to its output
 export class PassthroughTool extends ToolInst {
-	protected inp: Input = this.makeNumberInput('inp', 'Input');
 	protected type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean', 'string[]', 'number[]', 'boolean[]', 'bytes' ]);
+	protected inp: Input = this.makeNumberInput('inp', 'Input');
 	protected out: Output = this.makeNumberOutput('out', 'Output');
 
 	inputDeserializeOrder = [ 'type' ];
@@ -479,6 +481,12 @@ export class PassthroughTool extends ToolInst {
 }
 
 export class ConstantTool extends PassthroughTool {
+	constructor(def: ToolDef<ConstantTool>, name: string) {
+		super(def, name);
+		this.type.description = 'Type';
+		this.inp.description = 'Value';
+	}
+
 	get loc() {
 		return undefined;
 	}
@@ -515,7 +523,7 @@ export class ConstantTool extends PassthroughTool {
 	get output() { return this.out; }
 }
 
-export const constantDef = makeDef(ConstantTool, 'Constant', 'Constant value');
+export const constantDef = makeDef(ConstantTool, 'Constant', 'Constant value', undefined, () => import('@/tools/const-viewer.vue'));
 
 class SetWithChangedFlag<T> extends Set<T> {
 	private _changed = false;

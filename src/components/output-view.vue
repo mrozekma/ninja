@@ -1,25 +1,35 @@
 <template>
-	<b-message v-if="message !== undefined" :type="message.type">
-		{{ message.text }}
-	</b-message>
-	<div v-else class="form">
-		<tool-field v-for="output in outputs" :key="output.name" :io="output"></tool-field>
+	<div class="form">
+		<b-message v-if="message !== undefined" :type="message.type">
+			{{ message.text }}
+		</b-message>
+		<component v-if="viewerComponent" :is="viewerComponent" :tool="toolManager.selectedTool"></component>
 	</div>
 </template>
 
 <script lang="ts">
-	//TODO Global outputs when no tool selected
-	//TODO Allow copying outputs, changing display format
-	import { Output, ToolState } from '@/tools';
+	//TODO Allow copying outputs
+	import { ToolState } from '@/tools';
+	import groups from '@/tools/groups';
+
+	const viewers: {[K: string]: (() => Promise<any>)} = {
+		'tool-auto-viewer': () => import('@/tools/auto-viewer.vue'),
+	};
+	for(const group of groups) {
+		for(const def of group.tools) {
+			if(def.viewer) {
+				viewers[`tool-viewer:${def.name}`] = def.viewer;
+			}
+		}
+	}
 
 	import Vue from 'vue';
-	import ToolFieldComponent from '@/components/tool-field.vue';
 	export default Vue.extend({
-		components: { ToolField: ToolFieldComponent },
+		components: viewers,
 		computed: {
-			outputs(): Readonly<Output[]> {
+			viewerComponent(): string | undefined {
 				const tool = this.toolManager.selectedTool;
-				return tool ? tool.outputs : [];
+				return !tool ? undefined : tool.def.viewer ? `tool-viewer:${tool.def.name}` : 'tool-auto-viewer';
 			},
 			message(): { type: string; text: string } | undefined {
 				const tool = this.toolManager.selectedTool;
@@ -38,18 +48,9 @@
 </script>
 
 <style lang="less" scoped>
-	article {
-		margin: 10px;
-	}
-
 	.form {
-		display: flex;
-		flex-wrap: wrap;
-
-		> * {
-			flex: 1 0 auto;
+		article {
 			margin: 10px;
-
 		}
 	}
 </style>
