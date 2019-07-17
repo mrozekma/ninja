@@ -277,6 +277,15 @@ export abstract class ToolInst {
 	get state(): ToolState { return this._state; }
 	set state(state: ToolState) { this._state = state; }
 
+	get stateInfo(): { type: string; text: string } | undefined {
+		switch(this.state) {
+			case ToolState.good: return undefined;
+			case ToolState.badInputs: return { type: 'is-danger', text: "Invalid inputs prevented this tool from running." };
+			case ToolState.failed: return { type: 'is-danger', text: `This tool failed to run: ${this.error}.` };
+			case ToolState.cycle: return { type: 'is-warning', text: "A circular dependency prevented this tool from running." };
+		}
+	}
+
 	get error(): string | undefined { return this._error; }
 
 	//NB: Tools can dynamically hide inputs and outputs, but should keep reusing the same instances so connections can come back.

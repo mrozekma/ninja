@@ -7,7 +7,10 @@
 			<span class="clickable" @click="io.watch = false"><b-tag type="is-primary"><i class="fas fa-eye-slash"></i></b-tag></span>
 			<b-numberinput v-if="arrayLen !== undefined" controls-position="compact" size="is-small" :min="0" :max="arrayLen - 1" :showMax="true" v-model="arrayIdx"></b-numberinput>
 		</template>
-		<tool-io :io="io" :arrayIdx="(arrayLen !== undefined) ? arrayIdx : undefined" :renderAsWatch="true"></tool-io>
+		<b-message v-if="message !== undefined" :type="message.type">
+			{{ message.text }}
+		</b-message>
+		<tool-io v-else :io="io" :arrayIdx="(arrayLen !== undefined) ? arrayIdx : undefined" :renderAsWatch="true"></tool-io>
 	</b-field>
 </template>
 
@@ -22,6 +25,10 @@
 			io: Object as PropType<Input | Output>,
 		},
 		computed: {
+			message(): ToolInst["stateInfo"] {
+				const tool = this.io.tool;
+				return tool ? tool.stateInfo : undefined;
+			},
 			arrayLen(): number | undefined {
 				return Array.isArray(this.io.val) ? this.io.val.length : undefined;
 			},
