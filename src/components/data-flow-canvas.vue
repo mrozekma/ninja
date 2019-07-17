@@ -99,6 +99,12 @@
 
 	import Vue, { PropType } from 'vue';
 	export default Vue.extend({
+		props: {
+			lockAutoLayout: {
+				type: Boolean,
+				required: true,
+			},
+		},
 		computed: {
 			cursor(): string {
 				if(this.connecting) {
@@ -111,7 +117,7 @@
 				switch(this.mouse.state) {
 					case 'over-tool':
 					case 'dragging-tool':
-						return this.settings.autoLayout ? 'default' : 'move';
+						return this.lockAutoLayout ? 'default' : 'move';
 					case 'over-connector':
 					case 'over-indicator':
 						return 'pointer';
@@ -128,7 +134,7 @@
 						indicators: [],
 					};
 				}
-				if(this.settings.autoLayout) {
+				if(this.lockAutoLayout) {
 					this.autoLayout();
 				}
 				const tools = this.toolManager.tools.filter(tool => tool.loc).map(this.layoutTool);
@@ -199,7 +205,7 @@
 
 			grow() {
 				this.setupCanvas();
-				if(this.settings.autoLayout) {
+				if(this.lockAutoLayout) {
 					this.autoLayout();
 				}
 			},
@@ -812,7 +818,7 @@
 						}
 						break;
 					case 'over-tool':
-						if(!this.settings.autoLayout) {
+						if(!this.lockAutoLayout) {
 							this.mouse.state = 'dragging-tool';
 						}
 						this.toolManager.selectedTool = this.mouse.tool;

@@ -104,13 +104,13 @@
 					<split-grid-area class="col" size-unit="fr" :size-value="1">
 						<h1>
 							Routing
-							<div style="margin-right: 10px">
-								<b-tooltip v-if="anyTools && !settings.autoLayout" label="Auto-layout" position="is-bottom">
-									<i class="fas fa-project-diagram" @click="$refs.dfcanvas.autoLayout()"></i>
+							<div style="margin-right: 10px"  :class="{locked: lockAutoLayout}">
+								<b-tooltip v-if="anyTools" :label="'Auto-layout' + (lockAutoLayout ? ' (locked)' : '')" position="is-left">
+									<i class="fas fa-project-diagram" @click="autoLayoutClick"></i>
 								</b-tooltip>
 							</div>
 						</h1>
-						<data-flow-canvas ref="dfcanvas"></data-flow-canvas>
+						<data-flow-canvas ref="dfcanvas" :lockAutoLayout="lockAutoLayout"></data-flow-canvas>
 					</split-grid-area>
 					<split-grid-gutter :show="showWatchPanel"/>
 					<split-grid-area :show="showWatchPanel" class="col scroll" size-unit="px" :size-value="250">
@@ -199,6 +199,7 @@
 		},
 		data() {
 			return {
+				lockAutoLayout: false,
 				showWatchPanel: false,
 				showErrorsPanel: false,
 				showAboutDialog: false,
@@ -225,8 +226,12 @@
 					this.showWatchPanel = true;
 				}
 			},
+			'settings.autoLayout'(val: boolean) {
+				this.lockAutoLayout = val;
+			},
 		},
 		mounted() {
+			this.lockAutoLayout = this.settings.autoLayout;
 			this.savedScripts = this.findSavedNames();
 
 			const onHashChange = () => {
@@ -254,6 +259,7 @@
 				this.toolManager.tools = [];
 				this.toolManager.selectedTool = undefined;
 				(this.$refs.dfcanvas as any).resetViewport();
+				this.lockAutoLayout = this.settings.autoLayout;
 				this.$snackbar.open({
 					message: 'Tools cleared',
 					type: 'is-info',
@@ -261,6 +267,16 @@
 					actionText: 'Undo',
 					onAction: () => { this.toolManager.tools = old; this.toolManager.selectedTool = undefined; },
 				});
+			},
+
+			autoLayoutClick(e: MouseEvent) {
+				if(e.ctrlKey) {
+					this.lockAutoLayout = !this.lockAutoLayout;
+					if(!this.lockAutoLayout) {
+						return;
+					}
+				}
+				(this.$refs.dfcanvas as any).autoLayout();
 			},
 
 			loadFromDisk(e: Event) {
@@ -531,5 +547,10 @@ $colors: (
 		to {
 			transform: rotate(360deg);
 		}
+	}
+
+	.locked i {
+		color: #444;
+		text-shadow: 0 0 10px #ff0;
 	}
 </style>
