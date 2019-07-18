@@ -345,7 +345,6 @@
 				});
 				g.setDefaultEdgeLabel(() => ({}));
 				const locTools = this.toolManager.tools.filter(tool => tool.loc !== undefined);
-				console.log(locTools);
 				for(const tool of locTools) {
 					g.setNode(tool.name, { width: TOOL_WIDTH, height: TOOL_HEIGHT });
 				}
@@ -531,9 +530,9 @@
 				}
 			},
 
-			getStyleForConnector(connector: Connector): { stroke: string, fill: string, shape: 'circle' | 'rect' } {
+			getStyleForType(type: (Input | Output)["type"]): { stroke: string, fill: string, shape: 'circle' | 'rect' } {
 				const hue: number = (() => {
-					switch(connector.field.type) {
+					switch(type) {
 						case 'string':
 						case 'string[]':
 						case 'enum':
@@ -552,7 +551,7 @@
 				return {
 					stroke: `hsl(${hue}, 100%, 31%)`,
 					fill: `hsl(${hue}, 100%, 61%)`,
-					shape: connector.field.type.endsWith('[]') ? 'rect' : 'circle',
+					shape: type.endsWith('[]') ? 'rect' : 'circle',
 				};
 			},
 
@@ -656,7 +655,9 @@
 					x: sink.rect.x + sink.rect.width / 2,
 					y: sink.rect.y + sink.rect.height / 2,
 				};
-				const style = this.getStyleForConnector(source);
+
+				const sourceStyle = this.getStyleForType(source.field.type);
+				const sinkStyle = isPoint(sink) ? sourceStyle : this.getStyleForType(sink.field.type);
 
 				// Line between the connectors
 				//TODO Bend differently if the output tool is below the input tool
@@ -668,13 +669,21 @@
 					sinkCenter.x, sinkCenter.y + (source.type == 'input' ? cpDist : -cpDist),
 					sinkCenter.x, sinkCenter.y,
 				);
-				this.ctx.strokeStyle = upToDate ? style.stroke : '#888';
+				if(!upToDate) {
+					this.ctx.strokeStyle = '#888';
+				} else {
+					const grad = this.ctx.createLinearGradient(sourceCenter.x, sourceCenter.y, sinkCenter.x, sinkCenter.y);
+					grad.addColorStop(0, sourceStyle.stroke);
+					grad.addColorStop(1, sinkStyle.stroke);
+					this.ctx.strokeStyle = grad;
+				}
+				// this.ctx.strokeStyle = upToDate ? style.stroke : '#888';
 				this.ctx.stroke();
 
 				// Connector endpoints (these are drawn after the line so the fill is on top)
-				const drawEndpoint = (center: Point, shape: 'rect' | 'circle') => {
+				const drawEndpoint = (center: Point, style: typeof sourceStyle) => {
 					this.ctx.fillStyle = upToDate ? style.fill : '#aaa';
-					switch(shape) {
+					switch(style.shape) {
 						case 'rect':
 							this.ctx.strokeRect(center.x - CONNECTOR_RADIUS + 1, center.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
 							this.ctx.fillRect(center.x - CONNECTOR_RADIUS + 1, center.y - CONNECTOR_RADIUS + 1, CONNECTOR_RADIUS * 2 - 2, CONNECTOR_RADIUS * 2 - 2);
@@ -687,16 +696,13 @@
 							break;
 					}
 				};
-				drawEndpoint(sourceCenter, style.shape);
+				drawEndpoint(sourceCenter, sourceStyle);
 				if(drawSinkpoint) {
-					const sinkStyle = isPoint(sink) ? style : this.getStyleForConnector(sink);
-					drawEndpoint(sinkCenter, sinkStyle.shape);
+					drawEndpoint(sinkCenter, sinkStyle);
 				}
 			},
 
 			drawIndicator(layout: IndicatorLayout) {
-				// const lineHeight = (layout.sink.y + layout.sink.height) - (layout.source.rect.y + layout.source.rect.height / 2);
-				// console.log(lineHeight);
 				switch(layout.type) {
 					case 'missing':
 						this.drawConnection(layout.source, {
@@ -719,8 +725,11 @@
 						// 	width: layout.sink.width,
 						// 	height: layout.sink.height,
 						// };
+						const style = this.getStyleForType(layout.output.type);
+						this.ctx.fillStyle = style.fill;
 						this.ctx.fillRect(layout.sink.x, layout.sink.y, layout.sink.width, layout.sink.height);
 						this.ctx.lineWidth = 1;
+						this.ctx.strokeStyle = style.stroke;
 						this.ctx.strokeRect(layout.sink.x, layout.sink.y, layout.sink.width, layout.sink.height);
 						this.ctx.fillStyle = '#fff';
 						this.text(layout.output.tool.name, this.padRect(layout.sink, this.ctx.lineWidth), 16, 'center', 'middle', false);

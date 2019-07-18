@@ -10,8 +10,8 @@ class AssertEqual extends ToolInst {
 		if(input === this.type) {
 			this.in1.type = this.in2.type = this.type.val;
 			//TODO This throws an exception if the val isn't convertable. Same problem in PassthroughTool
-			this.in1.val = convertToInputType(this.in1.val, this.in1);
-			this.in2.val = convertToInputType(this.in2.val, this.in2);
+			this.propagateInputVal(this.in1);
+			this.propagateInputVal(this.in2);
 		}
 	}
 

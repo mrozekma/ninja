@@ -360,19 +360,23 @@ export abstract class ToolInst {
 	propagateInputVal(input: Input) {
 		if(input.tool != this) {
 			throw new Error(`Input for wrong tool`);
-		} else if(input.connection === undefined) {
-			throw new Error(`Input ${input.tool.name}.${input.name} is unbound`);
 		}
+
 		const oldVal = input.val;
-		const output = input.connection.output;
-		try {
-			const val = convertToInputType(output.val, input);
-			input.val = val;
-		} catch(e) {
-			input.connection.error = `Unable to convert ${output.type} ${output.tool.name}.${output.name} to ${input.type} ${input.tool.name}.${input.name}: ${e.message}`;
-			return;
+		if(input.connection === undefined) {
+			// This is just an internal type conversion. If it fails, throw the exception
+			input.val = convertToInputType(input.val, input);
+		} else {
+			const output = input.connection.output;
+			try {
+				const val = convertToInputType(output.val, input);
+				input.val = val;
+			} catch(e) {
+				input.connection.error = `Unable to convert ${output.type} ${output.tool.name}.${output.name} to ${input.type} ${input.tool.name}.${input.name}: ${e.message}`;
+				return;
+			}
+			input.connection.upToDate = true;
 		}
-		input.connection.upToDate = true;
 		this.state = ToolState.stale;
 		this.onInputSet(input, oldVal);
 	}
@@ -480,7 +484,7 @@ export class PassthroughTool extends ToolInst {
 	protected onInputSet(input: Input, oldVal?: string | number | boolean) {
 		if(input === this.type) {
 			this.inp.type = this.out.type = this.type.val as 'string' | 'number' | 'boolean' | 'bytes' | 'string[]' | 'number[]' | 'boolean[]';
-			this.inp.val = convertToInputType(this.inp.val, this.inp);
+			this.propagateInputVal(this.inp);
 		}
 	}
 
@@ -635,7 +639,8 @@ export class ToolManager {
 		})();
 		const tool = def.gen(name);
 		this._tools.push(tool);
-		this.updateData(tool);
+		// The tool might not stabilize until there's a pass through the event loop
+		setTimeout(() => this.updateData(tool), 0);
 		return tool;
 	}
 

@@ -94,6 +94,8 @@
 			}
 
 			.tag code {
+				position: relative;
+				top: -1px;
 				margin-left: 1px;
 				border-radius: 4px;
 			}
