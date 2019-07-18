@@ -68,9 +68,12 @@
 
 		<split-grid direction="column" :gutter-size="3" class="main-grid" @drag-start="data => gridDragStart('main', data.direction, data.track)" @drag-end="data => gridDragEnd('main', data.direction, data.track)">
 			<split-grid-area class="col" size-unit="px" :size-value="300">
-				<h1>Tools</h1>
+				<h1>
+					Tools
+					<i class="fas fa-search" @click="$refs.toolList.toggleSearch()"></i>
+				</h1>
 				<div class="scroll">
-					<tool-list></tool-list>
+					<tool-list ref="toolList"></tool-list>
 				</div>
 			</split-grid-area>
 			<split-grid-gutter/>

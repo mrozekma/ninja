@@ -1,6 +1,12 @@
 <template>
 	<div>
-		<template v-for="group in groups">
+		<b-input v-if="search !== undefined" ref="search" type="search" v-model="search" icon="search" placeholder="Search" @blur="searchBlur"></b-input>
+		<template v-if="search">
+			<div v-for="tool in searchResults" :key="tool.name" class="tool" @click="selectTool(tool)">
+				{{ tool.name }}
+			</div>
+		</template>
+		<template v-else v-for="group in groups">
 			<div :key="`header-${group.name}`" class="header" @click="group.expanded = !group.expanded">
 				<i :class="['fas', group.expanded ? 'fa-minus' : 'fa-plus']"></i>
 				<i :class="group.icon"></i> {{ group.name }}
@@ -26,6 +32,19 @@
 
 	import Vue from 'vue'
 	export default Vue.extend({
+		computed: {
+			searchResults(): ToolDef[] | undefined {
+				if(this.search === undefined) {
+					return undefined;
+				}
+				const search = new RegExp(this.search, 'i');
+				//TODO Fuzzy match?
+				return this.groups
+					.flatMap(group => group.tools)
+					.filter(def => search.test(def.name) || search.test(def.description))
+					.sort((def1, def2) => def1.name < def2.name ? -1 : def1.name > def2.name ? 1 : 0);
+			},
+		},
 		data() {
 			const groups = toolGroups.map<ToolGroupGUI>(group => ({
 				...group,
@@ -34,11 +53,24 @@
 
 			return {
 				groups,
+				search: undefined as string | undefined,
 			};
 		},
 		methods: {
 			selectTool(def: ToolDef) {
 				this.toolManager.selectedTool = this.toolManager.addTool(def);
+			},
+			searchBlur() {
+				if(this.search!.length == 0) {
+					this.search = undefined;
+				}
+			},
+			async toggleSearch() { // Called externally by app
+				this.search = (this.search === undefined) ? '' : undefined;
+				if(this.search !== undefined) {
+					await this.$nextTick();
+					(this.$refs.search as HTMLInputElement).focus();
+				}
 			},
 		},
 	});
