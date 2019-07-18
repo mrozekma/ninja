@@ -1,4 +1,4 @@
-import { makeDef, ToolInst, Input, ToolDef } from '@/tools';
+import { makeDef, ToolInst, Input, ToolDef, ReversibleTool } from '@/tools';
 
 //@ts-ignore No declaration file
 import { encrypt as caesarShift, decrypt as caesarUnshift } from 'caesar-shift';
@@ -98,18 +98,23 @@ const paddingModes: {
 	},
 ];
 
-class AESTool extends ToolInst {
-	private in = this.makeBytesInput('', '');
+class AESTool extends ReversibleTool {
+	private in = this.makeBytesInput('pt', 'Plaintext');
 	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Encrypt', 'Decrypt' ]);
 	private mode = this.makeEnumInput('mode', 'Mode', 'CBC', cipherModes.map(mode => mode.name));
 	private padMode = this.makeEnumInput('pad', 'Padding Mode', 'None', paddingModes.map(mode => mode.name));
 	private key = this.makeBytesInput('key', 'Key');
 	private iv = this.makeBytesInput('iv', 'Initialization Vector');
 	private tagIn = this.makeBytesInput('tag', 'Authentication Tag');
-	private out = this.makeBytesOutput('', '');
+	private out = this.makeBytesOutput('ct', 'Ciphertext');
 	private tagOut = this.makeBytesOutput('tag', 'Authentication Tag');
 
 	readonly inputDeserializeOrder = [ 'dir', 'mode' ]
+
+	constructor(def: ToolDef<AESTool>, name: string) {
+		super(def, name);
+		this.registerFields(this.dir, this.in, this.out);
+	}
 
 	private get modeInfo() {
 		return cipherModes.find(mode => mode.name == this.mode.val)!;
@@ -151,30 +156,16 @@ class AESTool extends ToolInst {
 		return this.dir.val ? this.out : this.in;
 	}
 
-	protected onInputSet(input: Input) {
-		switch(input) {
-			case this.dir:
-				this.pt.name = 'pt';
-				this.pt.description = 'Plaintext';
-				this.ct.name = 'ct';
-				this.ct.description = 'Ciphertext';
-				break;
-			case this.key:
-				//TODO Check key length
-				break;
-		}
-	}
-
-	async runImpl() {
+	private checkKeyLen() {
 		const keyLen = this.key.val.length;
 		if(keyLen != 16 && keyLen != 20 && keyLen != 24) {
 			throw new Error(`Invalid ${keyLen * 8}-bit key. Must be 128, 160, or 192 bits`);
 		}
-		(this.dir.val ? this.encrypt : this.decrypt).call(this, keyLen);
 	}
 
-	private encrypt(keyLen: number) {
-		const cipher = crypto.createCipheriv(`aes-${keyLen * 8}-${this.mode.val.toLowerCase()}`, this.key.val, this.modeInfo.hasIv ? this.iv.val : '');
+	async runForward() {
+		this.checkKeyLen();
+		const cipher = crypto.createCipheriv(`aes-${this.key.val.length * 8}-${this.mode.val.toLowerCase()}`, this.key.val, this.modeInfo.hasIv ? this.iv.val : '');
 		cipher.setAutoPadding(false);
 		const padded = this.paddingModeInfo.pad(this.in.val, 16);
 		this.out.val = Buffer.concat([ cipher.update(padded), cipher.final() ]);
@@ -183,8 +174,9 @@ class AESTool extends ToolInst {
 		}
 	}
 
-	private decrypt(keyLen: number) {
-		const cipher = crypto.createDecipheriv(`aes-${keyLen * 8}-${this.mode.val.toLowerCase()}`, this.key.val, this.modeInfo.hasIv ? this.iv.val : '');
+	async runBackward() {
+		this.checkKeyLen();
+		const cipher = crypto.createDecipheriv(`aes-${this.key.val.length * 8}-${this.mode.val.toLowerCase()}`, this.key.val, this.modeInfo.hasIv ? this.iv.val : '');
 		cipher.setAutoPadding(false);
 		if(this.modeInfo.hasTag) {
 			(cipher as crypto.DecipherGCM).setAuthTag(this.tagIn.val);
@@ -194,27 +186,23 @@ class AESTool extends ToolInst {
 	}
 }
 
-class CaesarTool extends ToolInst {
-	private inp = this.makeStringInput('in', '');
+class CaesarTool extends ReversibleTool {
+	private inp = this.makeStringInput('pt', 'Plaintext');
 	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Shift', 'Unshift' ]);
 	private key = this.makeNumberInput('key', 'Shift amount', 0, 0, 25);
-	private out = this.makeStringOutput('out', '');
+	private out = this.makeStringOutput('ct', 'Ciphertext');
 
-	protected onInputSet(input: Input) {
-		if(input === this.dir) {
-			this.updateDescriptions();
-		}
+	constructor(def: ToolDef<CaesarTool>, name: string) {
+		super(def, name);
+		this.registerFields(this.dir, this.inp, this.out);
 	}
 
-	private updateDescriptions() {
-		const dir = this.dir.val;
-		this.inp.description = dir ? "Plaintext" : "Ciphertext";
-		this.out.description = dir ? "Ciphertext" : "Plaintext";
+	async runForward() {
+		this.out.val = caesarShift(this.key.val, this.inp.val);
 	}
 
-	async runImpl() {
-		const fn = this.dir.val ? caesarShift : caesarUnshift;
-		this.out.val = fn(this.key.val, this.inp.val);
+	async runBackward() {
+		this.out.val = caesarUnshift(this.key.val, this.inp.val);
 	}
 }
 

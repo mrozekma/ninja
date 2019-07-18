@@ -1,4 +1,4 @@
-import { makeDef, ToolInst, Input, Output } from '@/tools';
+import { makeDef, ToolInst, Input, Output, ReversibleTool, ToolDef } from '@/tools';
 
 class StringEncodeTool extends ToolInst {
 	private inp = this.makeStringInput('in', 'Input');
@@ -66,28 +66,22 @@ class TextArrayIndexTool extends ToolInst {
 	}
 }
 
-class Base64Tool extends ToolInst {
-	private inp: Input = this.makeStringInput('in', '');
+class Base64Tool extends ReversibleTool {
+	private inp: Input = this.makeBytesInput('data', 'Data');
 	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Encode', 'Decode' ]);
-	private out: Output = this.makeStringOutput('out', '');
+	private out: Output = this.makeStringOutput('enc', 'Encoded');
 
-	protected onInputSet(input: Input) {
-		if(input === this.dir) {
-			const dir = this.dir.val;
-			const pt = dir ? this.inp : this.out, enc = dir ? this.out : this.inp;
-			pt.type = 'bytes';
-			pt.description = 'Plaintext';
-			enc.type = 'string';
-			enc.description = 'Encoded';
-		}
+	constructor(def: ToolDef<Base64Tool>, name: string) {
+		super(def, name);
+		this.registerFields(this.dir, this.inp, this.out);
 	}
 
-	async runImpl() {
-		if(this.dir.val) {
-			this.out.val = (this.inp.val as Buffer).toString('base64');
-		} else {
-			this.out.val = Buffer.from(this.inp.val as string, 'base64');
-		}
+	async runForward() {
+		this.out.val = (this.inp.val as Buffer).toString('base64');
+	}
+
+	async runBackward() {
+		this.out.val = Buffer.from(this.inp.val as string, 'base64');
 	}
 }
 

@@ -323,6 +323,35 @@ export abstract class ToolInst {
 		return rtn;
 	}
 
+	setInputType(input: Input, type: Input["type"]) {
+		if(input.tool != this) {
+			throw new Error(`Input for wrong tool`);
+		}
+		input.type = type;
+		this.propagateInputVal(input);
+	}
+
+	setOutputType(output: Output, type: Output["type"]) {
+		if(output.tool != this) {
+			throw new Error(`Output for wrong tool`);
+		}
+		output.type = type;
+		output.val = (() => {
+			switch(output.type) {
+				case 'string': return '';
+				case 'number': return 0;
+				case 'boolean': return false;
+				case 'enum': return output.options[0]; // This won't actually exist; using setOutputType to set an enum can't work
+				case 'bytes': return Buffer.alloc(0);
+				case 'string[]': return [];
+				case 'number[]': return [];
+				case 'boolean[]': return [];
+				case 'enum[]': return [];
+			}
+		})();
+		this.state = ToolState.stale;
+	}
+
 	setInputVal(input: Input, val: IOValTypes) {
 		if(input.tool != this) {
 			throw new Error(`Input for wrong tool`);
@@ -474,7 +503,7 @@ export abstract class ToolInst {
 }
 
 // Abstract interface for a tool that passes its input through to its output
-export class PassthroughTool extends ToolInst {
+export abstract class PassthroughTool extends ToolInst {
 	protected type = this.makeEnumInput('type', 'Input/output type', 'number', [ 'string', 'number', 'boolean', 'string[]', 'number[]', 'boolean[]', 'bytes' ]);
 	protected inp: Input = this.makeNumberInput('inp', 'Input');
 	protected out: Output = this.makeNumberOutput('out', 'Output');
@@ -483,13 +512,61 @@ export class PassthroughTool extends ToolInst {
 
 	protected onInputSet(input: Input, oldVal?: string | number | boolean) {
 		if(input === this.type) {
-			this.inp.type = this.out.type = this.type.val as 'string' | 'number' | 'boolean' | 'bytes' | 'string[]' | 'number[]' | 'boolean[]';
+			this.setInputType(this.inp, this.type.val);
+			this.setOutputType(this.out, this.type.val);
 			this.propagateInputVal(this.inp);
 		}
 	}
 
 	async runImpl() {
 		this.out.val = this.inp.val;
+	}
+}
+
+// Abstract interface for a tool with a toggle to make it apply a transform or its reverse (e.g. string encode/decode)
+export abstract class ReversibleTool extends ToolInst {
+	private reversibleToggle?: BooleanInput;
+	private reversibleInput?: Input;
+	private reversibleOutput?: Output;
+
+	constructor(def: ToolDef, name: string) {
+		super(def, name);
+		// We need access to some of the fields in the child class, but they're not initialized until after super(), so they can't be passed here
+		// Instead we require that the child class immediately call registerFields() after super(), and check if they didn't
+		setTimeout(() => {
+			if(this.reversibleToggle === undefined) {
+				console.error(`ReversibleTool child class ${this} didn't call registerFields()`);
+			}
+		}, 0);
+	}
+
+	protected registerFields(toggle: BooleanInput, inp: Input, out: Output) {
+		this.reversibleToggle = toggle;
+		this.reversibleInput = inp;
+		this.reversibleOutput = out;
+		if(this.inputDeserializeOrder.length == 0) {
+			this.inputDeserializeOrder.push(toggle.name);
+		}
+	}
+
+	protected onInputSet(input: Input, oldVal?: IOValTypes) {
+		if(input === this.reversibleToggle && oldVal !== undefined && this.reversibleToggle.val !== oldVal) {
+			const oldInpType = this.reversibleInput!.type;
+			this.setInputType(this.reversibleInput!, this.reversibleOutput!.type);
+			this.setOutputType(this.reversibleOutput!, oldInpType);
+			[ this.reversibleInput!.name, this.reversibleOutput!.name ] = [ this.reversibleOutput!.name, this.reversibleInput!.name ];
+			[ this.reversibleInput!.description, this.reversibleOutput!.description ] = [ this.reversibleOutput!.description, this.reversibleInput!.description ];
+		}
+	}
+
+	protected abstract async runForward(): Promise<void>;
+	protected abstract async runBackward(): Promise<void>;
+
+	async runImpl() {
+		if(this.reversibleToggle === undefined) {
+			throw new Error("Can't run ReversibleTool: registerFields() was never called");
+		}
+		await (this.reversibleToggle.val ? this.runForward() : this.runBackward());
 	}
 }
 
