@@ -1063,6 +1063,7 @@ export class ToolManager {
 
 		// Success. Replace the existing tools with the loaded set
 		this.tools = Array.from(insts.values());
+		setTimeout(() => this.updateData(), 0);
 
 		return {
 			viewport: obj.viewport ? {

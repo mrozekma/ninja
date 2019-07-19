@@ -341,6 +341,8 @@
 			autoLayout() {
 				const g = new dagre.graphlib.Graph();
 				g.setGraph({
+					marginx: 20,
+					marginy: 20,
 					ranksep: 75,
 				});
 				g.setDefaultEdgeLabel(() => ({}));
