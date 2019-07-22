@@ -12,7 +12,7 @@
 				<i :class="group.icon"></i> {{ group.name }}
 			</div>
 			<div v-if="group.expanded" :key="`group-${group.name}`" :ref="`group-${group.name}`">
-				<div v-for="tool in group.tools" :key="tool.name" class="tool" @click="selectTool(tool)">
+				<div v-for="tool in group.tools" :key="tool.name" v-tooltip.left="tool.description" class="tool" @click="selectTool(tool)">
 					{{ tool.name }}
 				</div>
 			</div>

@@ -7,9 +7,7 @@
 				</div>
 			</div>
 			<div class="navbar-start">
-				<b-tooltip label="New" position="is-bottom">
-					<a class="navbar-item navbar-toolbar-item" @click="clear"><i class="fas fa-file"></i></a>
-				</b-tooltip>
+				<a v-tooltip="'New'" class="navbar-item navbar-toolbar-item" @click="clear"><i class="fas fa-file"></i></a>
 				<div class="navbar-item has-dropdown is-hoverable">
 					<a class="navbar-item navbar-toolbar-item"><i class="fas fa-folder-open"></i></a>
 					<div class="navbar-dropdown">
@@ -24,31 +22,17 @@
 						<a class="navbar-item" @click="showLoadStringDialog = true"><i class="fas fa-file-upload"></i> Load from string</a>
 					</div>
 				</div>
-				<b-tooltip label="Save" position="is-bottom">
-					<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="startSave"><i class="fas fa-save"></i></a>
-				</b-tooltip>
-				<b-tooltip label="Share" position="is-bottom">
-					<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="doSave('clipboard', '')"><i class="fas fa-share-alt"></i></a>
-				</b-tooltip>
-				<b-tooltip label="Run All" position="is-bottom">
-					<a :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="runAll"><i class="fas fa-play-circle"></i></a>
-				</b-tooltip>
-				<b-tooltip label="Settings" position="is-bottom">
-					<a class="navbar-item navbar-toolbar-item" @click="showSettingsDialog = true"><i class="fas fa-cog"></i></a>
-				</b-tooltip>
+				<a v-tooltip="'Save'" :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="startSave"><i class="fas fa-save"></i></a>
+				<a v-tooltip="'Share'" :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="doSave('clipboard', '')"><i class="fas fa-share-alt"></i></a>
+				<a v-tooltip="'Run'" :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="runAll"><i class="fas fa-play-circle"></i></a>
+				<a v-tooltip="'Settings'" class="navbar-item navbar-toolbar-item" @click="showSettingsDialog = true"><i class="fas fa-cog"></i></a>
 			</div>
 			<div class="navbar-end">
-				<b-tooltip v-if="running" label="Running..." position="is-bottom">
-					<div class="navbar-item navbar-toolbar-item">
-						<div class="spinner"></div>
-					</div>
-				</b-tooltip>
-				<b-tooltip v-if="watched.length > 0" :label="showWatchPanel ? 'Hide Watch' : 'Show Watch'" position="is-bottom">
-					<a class="navbar-item navbar-toolbar-item" @click="showWatchPanel = !showWatchPanel"><i class="fas fa-eye"></i><span>{{ watched.length }}</span></a>
-				</b-tooltip>
-				<b-tooltip v-if="errors.length > 0" :label="showErrorsPanel ? 'Hide Errors' : 'Show Errors'" position="is-bottom">
-					<a class="navbar-item navbar-toolbar-item" @click="showErrorsPanel = !showErrorsPanel; autoErrorsPanel = false"><i class="fas fa-exclamation-triangle"></i><span>{{ errors.length }}</span></a>
-				</b-tooltip>
+				<div v-if="running" v-tooltip="'Running...'" class="navbar-item navbar-toolbar-item">
+					<div class="spinner"></div>
+				</div>
+				<a v-if="watched.length > 0" v-tooltip="showWatchPanel ? 'Hide Watch' : 'Show Watch'" class="navbar-item navbar-toolbar-item" @click="showWatchPanel = !showWatchPanel"><i class="fas fa-eye"></i><span>{{ watched.length }}</span></a>
+				<a v-if="errors.length > 0" v-tooltip="showErrorsPanel ? 'Hide Errors' : 'Show Errors'" class="navbar-item navbar-toolbar-item" @click="showErrorsPanel = !showErrorsPanel; autoErrorsPanel = false"><i class="fas fa-exclamation-triangle"></i><span>{{ errors.length }}</span></a>
 			</div>
 		</nav>
 
@@ -67,7 +51,7 @@
 		</b-modal>
 
 		<split-grid direction="column" :gutter-size="3" class="main-grid" @drag-start="data => gridDragStart('main', data.direction, data.track)" @drag-end="data => gridDragEnd('main', data.direction, data.track)">
-			<split-grid-area class="col" size-unit="px" :size-value="300">
+			<split-grid-area class="col scroll" size-unit="px" :size-value="300">
 				<h1>
 					Tools
 					<i class="fas fa-search" @click="$refs.toolList.toggleSearch()"></i>
@@ -107,10 +91,8 @@
 					<split-grid-area class="col" size-unit="fr" :size-value="1">
 						<h1>
 							Routing
-							<div style="margin-right: 10px"  :class="{locked: lockAutoLayout}">
-								<b-tooltip v-if="anyTools" :label="'Auto-layout' + (lockAutoLayout ? ' (locked)' : '')" position="is-left">
-									<i class="fas fa-project-diagram" @click="autoLayoutClick"></i>
-								</b-tooltip>
+							<div style="margin-right: 10px" :class="{locked: lockAutoLayout}">
+								<i v-if="anyTools" v-tooltip="'Auto-layout' + (lockAutoLayout ? ' (locked)' : '')" class="fas fa-project-diagram" @click="autoLayoutClick"></i>
 							</div>
 						</h1>
 						<data-flow-canvas ref="dfcanvas" :lockAutoLayout="lockAutoLayout"></data-flow-canvas>
@@ -157,6 +139,13 @@
 	// Custom versions of Buefy components
 	import CustomNumberInput from '@/components/buefy-custom/numberinput.vue';
 	Vue.component(CustomNumberInput.name, CustomNumberInput);
+
+	//@ts-ignore No declaration file
+	import VTooltip from 'v-tooltip';
+	Vue.use(VTooltip, {
+		defaultPlacement: 'bottom',
+		defaultBoundariesElement: 'viewport',
+	});
 
 	import 'typeface-montserrat';
 	import '@fortawesome/fontawesome-free';
@@ -487,8 +476,9 @@ $colors: (
 			i ~ span {
 				margin-left: 5px;
 			}
-			&:hover i {
-				color: #ff3860;
+			&:hover {
+				background-color: #fafafa !important;
+				color: #ff3860 !important;
 			}
 		}
 		.navbar-dropdown .navbar-item i {
@@ -565,5 +555,120 @@ $colors: (
 	.locked i {
 		color: #444;
 		text-shadow: 0 0 10px #ff0;
+	}
+</style>
+
+<style lang="less">
+	// Mostly https://github.com/Akryum/v-tooltip#style-examples, with some style copied from buefy
+	.tooltip {
+		display: block !important;
+		z-index: 10000;
+
+		.tooltip-inner {
+			background: #ff3860;
+			color: #fff;
+			border-radius: 6px;
+			padding: 0.35rem 0.75rem;
+			font-size: 0.85rem;
+			box-shadow: 0px 1px 2px 1px rgba(0, 1, 0, 0.2);
+		}
+
+		.tooltip-arrow {
+			width: 0;
+			height: 0;
+			border-style: solid;
+			position: absolute;
+			margin: 5px;
+			border-color: #ff3860;
+			z-index: 1;
+		}
+
+		&[x-placement^="top"] {
+			margin-bottom: 5px;
+
+			.tooltip-arrow {
+				border-width: 5px 5px 0 5px;
+				border-left-color: transparent !important;
+				border-right-color: transparent !important;
+				border-bottom-color: transparent !important;
+				bottom: -5px;
+				left: calc(50% - 5px);
+				margin-top: 0;
+				margin-bottom: 0;
+			}
+		}
+
+		&[x-placement^="bottom"] {
+			margin-top: 5px;
+
+			.tooltip-arrow {
+				border-width: 0 5px 5px 5px;
+				border-left-color: transparent !important;
+				border-right-color: transparent !important;
+				border-top-color: transparent !important;
+				top: -5px;
+				left: calc(50% - 5px);
+				margin-top: 0;
+				margin-bottom: 0;
+			}
+		}
+
+		&[x-placement^="right"] {
+			margin-left: 5px;
+
+			.tooltip-arrow {
+				border-width: 5px 5px 5px 0;
+				border-left-color: transparent !important;
+				border-top-color: transparent !important;
+				border-bottom-color: transparent !important;
+				left: -5px;
+				top: calc(50% - 5px);
+				margin-left: 0;
+				margin-right: 0;
+			}
+		}
+
+		&[x-placement^="left"] {
+			margin-right: 5px;
+
+			.tooltip-arrow {
+				border-width: 5px 0 5px 5px;
+				border-top-color: transparent !important;
+				border-right-color: transparent !important;
+				border-bottom-color: transparent !important;
+				right: -5px;
+				top: calc(50% - 5px);
+				margin-left: 0;
+				margin-right: 0;
+			}
+		}
+
+		&.popover {
+			@color: #f9f9f9;
+
+			.popover-inner {
+				background: @color;
+				color: black;
+				padding: 24px;
+				border-radius: 5px;
+				box-shadow: 0 5px 30px rgba(black, .1);
+			}
+
+			.popover-arrow {
+				border-color: @color;
+			}
+		}
+
+		&[aria-hidden='true'] {
+			visibility: hidden;
+			opacity: 0;
+			// transition: opacity .15s, visibility .15s;
+		}
+
+		&[aria-hidden='false'] {
+			visibility: visible;
+			opacity: 1;
+			// transition: opacity .15s;
+		}
 	}
 </style>

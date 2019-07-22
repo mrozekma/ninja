@@ -1,6 +1,6 @@
 <template>
 	<vue-resizable :active="['b']" width="100%" :height="(manualHeight !== undefined) ? manualHeight : fitHeight" @resize:end="({height}) => manualHeight = height">
-		<div class="hexinput" tabindex="-1" @keydown="keydown" @focus="focus" @blur="blur" @cut="cut" @copy="copy" @paste="paste">
+		<div class="hexinput" tabindex="0" @keydown="keydown" @focus="focus" @blur="blur" @cut="cut" @copy="copy" @paste="paste">
 			<template v-for="(b, off) in bytes">
 				<div v-if="selection && selection.point == off && newByteFirstDigit !== undefined" class="point mark draft">
 					{{ newByteFirstDigit.toString(16) }}?

@@ -26,6 +26,7 @@
 		"scroll-into-view-if-needed": "^2.2.20",
 		"split-grid": "^1.0.9",
 		"typeface-montserrat": "^0.0.54",
+		"v-tooltip": "^2.0.2",
 		"vue": "^2.6.10",
 		"vue-resizable": "^1.0.15",
 		"vue-split-grid": "^0.8.0"
