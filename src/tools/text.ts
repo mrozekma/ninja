@@ -1,22 +1,22 @@
 import { makeDef, ToolInst, Input, Output, ReversibleTool, ToolDef } from '@/tools';
 
-class StringEncodeTool extends ToolInst {
-	private inp = this.makeStringInput('in', 'Input');
-	private encoding = this.makeEnumInput<BufferEncoding>('fmt', 'Encoding', 'utf8', [ "ascii", "utf8", "utf-8", "utf16le", "ucs2", "ucs-2", "base64", "latin1", "binary", "hex" ]);
-	private out = this.makeBytesOutput('out', 'Output');
+class StringEncodeDecodeTool extends ReversibleTool {
+	private inp: Input = this.makeStringInput('str', 'String');
+	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Encode', 'Decode' ]);
+	private encoding = this.makeEnumInput<BufferEncoding>('fmt', 'Encoding', 'utf8', [ "ascii", "utf8", "utf-8", "utf16le", "ucs2", "ucs-2", /* "base64", */ "latin1", "binary", "hex" ]);
+	private out: Output = this.makeBytesOutput('enc', 'Encoded');
 
-	async runImpl() {
-		this.out.val = Buffer.from(this.inp.val, this.encoding.val);
+	constructor(def: ToolDef<StringEncodeDecodeTool>, name: string) {
+		super(def, name);
+		this.registerFields(this.dir, this.inp, this.out);
 	}
-}
 
-class StringDecodeTool extends ToolInst {
-	private inp = this.makeBytesInput('in', 'Input');
-	private encoding = this.makeEnumInput<BufferEncoding>('fmt', 'Encoding', 'utf8', [ "ascii", "utf8", "utf-8", "utf16le", "ucs2", "ucs-2", "base64", "latin1", "binary", "hex" ]);
-	private out = this.makeStringOutput('out', 'Output');
+	async runForward() {
+		this.out.val = Buffer.from(this.inp.val as string, this.encoding.val);
+	}
 
-	async runImpl() {
-		this.out.val = this.inp.val.toString(this.encoding.val);
+	async runBackward() {
+		this.out.val = (this.inp.val as Buffer).toString(this.encoding.val);
 	}
 }
 
@@ -92,8 +92,7 @@ export class JSONDisplayTool extends ToolInst {
 }
 
 export default [
-	makeDef(StringEncodeTool, 'Encode', 'String encode'),
-	makeDef(StringDecodeTool, 'Decode', 'String decode'),
+	makeDef(StringEncodeDecodeTool, 'Encode/Decode', 'String encode/decode'),
 	makeDef(TextSplitTool, 'Split', 'Split text'),
 	makeDef(RegexMatchTool, 'Regex', 'Regular expression match'),
 	makeDef(TextArrayIndexTool, 'Index', 'Index into an array'),
