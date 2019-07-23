@@ -109,6 +109,12 @@
 				el.style.height = 'auto';
 				el.style.height = `${el.scrollHeight + 2}px`;
 			},
+			focus() {
+				const focusable = this.$el.querySelector<HTMLElement>('input,textarea,select,[tabindex="0"]');
+				if(focusable) {
+					focusable.focus();
+				}
+			}
 		},
 	});
 </script>

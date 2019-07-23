@@ -1,7 +1,7 @@
 <template>
 	<b-field :class="{wide: (io.type == 'string' || io.type == 'string[]' || io.type == 'bytes')}">
 		<template slot="label">
-			{{ io.description }}
+			<span v-html="descriptionWithMnemonic"></span>
 			<b-tag v-if="!io.watch" type="is-primary">{{ io.name }}</b-tag>
 			<span v-else @click="io.watch = false">
 				<b-tag class="is-watched clickable"><i class="fas fa-eye"></i> {{ io.name }}</b-tag>
@@ -34,7 +34,7 @@
 		<b-message v-if="io.io == 'input' && io.connection && io.connection.error" type="is-danger">
 			{{ io.connection.error }}
 		</b-message>
-		<tool-io v-else :io="io" :arrayIdx="(arrayLen !== undefined) ? arrayIdx : undefined"></tool-io>
+		<tool-io v-else ref="toolIo" :io="io" :arrayIdx="(arrayLen !== undefined) ? arrayIdx : undefined"></tool-io>
 	</b-field>
 </template>
 
@@ -47,8 +47,16 @@
 		components: { ToolIo: ToolIOComponent },
 		props: {
 			io: Object as PropType<Input | Output>,
+			mnemonic: {
+				type: String,
+				default: '-',
+			},
 		},
 		computed: {
+			descriptionWithMnemonic(): string {
+				// Currently descriptions don't contain any problematic characters, but this might need to be sanitized in the future
+				return this.mnemonic == '-' ? this.io.description : this.io.description.replace(new RegExp(this.mnemonic, 'i'), "<u>$&</u>");
+			},
 			arrayLen(): number | undefined {
 				return Array.isArray(this.io.val) ? this.io.val.length : undefined;
 			},
@@ -77,6 +85,11 @@
 			toolIsConstant(tool: ToolInst) {
 				return (tool instanceof ConstantTool);
 			},
+			focus() {
+				if(this.$refs.toolIo) {
+					(this.$refs.toolIo as any).focus();
+				}
+			},
 		},
 	});
 </script>
@@ -88,7 +101,7 @@
 		}
 
 		label {
-			> * {
+			> *:not(:first-child) {
 				display: inline-flex;
 				margin-left: 10px;
 			}

@@ -236,6 +236,7 @@
 			window.addEventListener('hashchange', onHashChange);
 			onHashChange();
 
+			hotkeys.filter = () => true;
 			hotkeys('ctrl+s', () => {
 				this.startSave();
 				return false;

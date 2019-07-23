@@ -4,8 +4,11 @@
 			Some of this tool's inputs are part of a circular dependency, so this tool cannot run.
 		</b-message>
 		<div class="type-and-name">
-			<b-field v-if="toolManager.selectedTool" label="Name">
-				<b-input :value="toolManager.selectedTool.name" @input="setName($event)"></b-input>
+			<b-field v-if="toolManager.selectedTool">
+				<template slot="label">
+					<u>N</u>ame
+				</template>
+				<b-input ref="nameField" :value="toolManager.selectedTool.name" @input="setName($event)"></b-input>
 			</b-field>
 			<b-field v-if="toolManager.selectedTool" label="Type">
 				<b-input :value="toolManager.selectedTool.def.name" disabled></b-input>
@@ -16,6 +19,8 @@
 </template>
 
 <script lang="ts">
+	import hotkeys from 'hotkeys-js';
+
 	import { ToolInst, ToolState, ToolDef } from '@/tools';
 	import groups from '@/tools/groups';
 
@@ -51,6 +56,18 @@
 				const tool = this.toolManager.selectedTool;
 				return !tool ? {} : { state: tool.state, error: tool.error }
 			},
+		},
+		mounted() {
+			// This needs to share the alt hotkey space with the editors
+			hotkeys('alt+n', () => {
+				if(this.toolManager.selectedTool) {
+					(this.$refs.nameField as HTMLInputElement).focus();
+					return false;
+				}
+			});
+		},
+		beforeDestroy() {
+			hotkeys.unbind('alt+n');
 		},
 		methods: {
 			setName(name: string) {
