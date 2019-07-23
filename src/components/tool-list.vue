@@ -1,18 +1,18 @@
 <template>
 	<div>
-		<b-input v-if="search !== undefined" ref="search" type="search" v-model="search" icon="search" placeholder="Search" @blur="searchBlur"></b-input>
+		<b-input v-if="search !== undefined" ref="search" type="search" v-model="search" icon="search" placeholder="Search" @blur="closeSearchIfEmpty" @keydown.native.esc="closeSearchIfEmpty"></b-input>
 		<template v-if="search">
-			<div v-for="tool in searchResults" :key="tool.name" class="tool" @click="selectTool(tool)">
+			<div v-for="tool in searchResults" :key="tool.name" class="tool" @mousedown="selectTool(tool)">
 				{{ tool.name }}
 			</div>
 		</template>
 		<template v-else v-for="group in groups">
-			<div :key="`header-${group.name}`" class="header" @click="group.expanded = !group.expanded">
+			<div :key="`header-${group.name}`" class="header" @mousedown="group.expanded = !group.expanded">
 				<i :class="['fas', group.expanded ? 'fa-minus' : 'fa-plus']"></i>
 				<i :class="group.icon"></i> {{ group.name }}
 			</div>
 			<div v-if="group.expanded" :key="`group-${group.name}`" :ref="`group-${group.name}`">
-				<div v-for="tool in group.tools" :key="tool.name" v-tooltip.left="tool.description" class="tool" @click="selectTool(tool)">
+				<div v-for="tool in group.tools" :key="tool.name" v-tooltip.left="tool.description" class="tool" @mousedown="selectTool(tool)">
 					{{ tool.name }}
 				</div>
 			</div>
@@ -21,8 +21,6 @@
 </template>
 
 <script lang="ts">
-	//TODO Search
-	//TODO Expand/collapse animation
 	import toolGroups, { ToolGroup } from '@/tools/groups';
 	import { ToolDef } from '@/tools';
 
@@ -60,16 +58,26 @@
 			selectTool(def: ToolDef) {
 				this.toolManager.selectedTool = this.toolManager.addTool(def);
 			},
-			searchBlur() {
-				if(this.search!.length == 0) {
+			closeSearchIfEmpty() {
+				if(this.search == '') {
 					this.search = undefined;
 				}
 			},
-			async toggleSearch() { // Called externally by app
-				this.search = (this.search === undefined) ? '' : undefined;
-				if(this.search !== undefined) {
-					await this.$nextTick();
-					(this.$refs.search as HTMLInputElement).focus();
+			async enableSearch() {
+				if(this.search === undefined) {
+					this.search = '';
+				}
+				await this.$nextTick();
+				(this.$refs.search as HTMLInputElement).focus();
+			},
+			disableSearch() {
+				this.search = undefined;
+			},
+			toggleSearch() { // Called externally by app
+				if(this.search === undefined) {
+					this.enableSearch();
+				} else {
+					this.disableSearch();
 				}
 			},
 		},

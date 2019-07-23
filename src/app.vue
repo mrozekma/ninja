@@ -153,6 +153,7 @@
 
 	import { saveAs } from 'file-saver';
 	import * as clipboard from 'clipboard-polyfill';
+	import hotkeys from 'hotkeys-js';
 
 	import { ToolInst, ToolError, ToolState, Input, Output, Viewport } from './tools';
 	import toolGroups from './tools/groups';
@@ -234,6 +235,19 @@
 			};
 			window.addEventListener('hashchange', onHashChange);
 			onHashChange();
+
+			hotkeys('ctrl+s', () => {
+				this.startSave();
+				return false;
+			});
+			hotkeys('ctrl+.', () => {
+				this.doSave('clipboard', '');
+				return false;
+			});
+			hotkeys('ctrl+f', () => {
+				(this.$refs.toolList as any).enableSearch();
+				return false;
+			});
 		},
 		methods: {
 			findSavedNames(): string[] {
