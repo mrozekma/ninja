@@ -6,7 +6,7 @@
 			<span v-else @click="io.watch = false">
 				<b-tag class="is-watched clickable"><i class="fas fa-eye"></i> {{ io.name }}</b-tag>
 			</span>
-			<span v-if="io.io == 'input' && io.connection" class="clickable" @click="disconnect(io)">
+			<span v-if="io.io == 'input' && io.connection" class="clickable" @click="disconnect()">
 				<b-tag type="is-primary">
 					<i class="fas fa-link"></i>
 					<template v-if="toolIsConstant(io.connection.output.tool)">
@@ -22,14 +22,17 @@
 					<i class="fas fa-caret-down"></i>
 				</b-tag>
 				<template v-if="io.io == 'input'">
-					<b-dropdown-item v-if="io.connection === undefined" @click="connect(io)"><i class="fas fa-link"></i> Connect</b-dropdown-item>
-					<b-dropdown-item v-else @click="disconnect(io)"><i class="fas fa-unlink"></i> Disconnect</b-dropdown-item>
+					<b-dropdown-item v-if="io.connection === undefined" @click="showConnectDialog = true"><i class="fas fa-link"></i> Connect</b-dropdown-item>
+					<b-dropdown-item v-else @click="disconnect()"><i class="fas fa-unlink"></i> Disconnect</b-dropdown-item>
 				</template>
 				<b-dropdown-item v-if="!io.watch" @click="io.watch = true"><i class="fas fa-eye"></i> Watch</b-dropdown-item>
 				<b-dropdown-item v-else @click="io.watch = false"><i class="fas fa-eye-slash"></i> Unwatch</b-dropdown-item>
-				<b-dropdown-item v-if="io.io == 'input' && io.connection === undefined" @click="makeConstant(io)"><i class="fas fa-question"></i> Pull into constant</b-dropdown-item> <!-- TODO Icon -->
+				<b-dropdown-item v-if="io.io == 'input' && io.connection === undefined" @click="makeConstant()"><i class="fas fa-icicles"></i> Pull into constant</b-dropdown-item>
 			</b-dropdown>
 			<b-numberinput v-if="arrayLen !== undefined" controls-position="compact" size="is-small" :min="0" :max="arrayLen - 1" :showMax="true" v-model="arrayIdx"></b-numberinput>
+			<b-modal :active.sync="showConnectDialog" has-modal-card>
+				<connect-dialog :io="io" @connect="connect"></connect-dialog>
+			</b-modal>
 		</template>
 		<b-message v-if="io.io == 'input' && io.connection && io.connection.error" type="is-danger">
 			{{ io.connection.error }}
@@ -42,9 +45,10 @@
 	import { Input, Output, ToolState, ToolInst, ConstantTool } from '@/tools';
 
 	import Vue, { PropType } from 'vue';
+	import ConnectDialog from '@/components/connect-dialog.vue';
 	import ToolIOComponent from '@/components/tool-io.vue';
 	export default Vue.extend({
-		components: { ToolIo: ToolIOComponent },
+		components: { ConnectDialog, ToolIo: ToolIOComponent },
 		props: {
 			io: Object as PropType<Input | Output>,
 			mnemonic: {
@@ -64,6 +68,7 @@
 		data() {
 			return {
 				arrayIdx: 0,
+				showConnectDialog: false,
 			};
 		},
 		watch: {
@@ -72,13 +77,27 @@
 			},
 		},
 		methods: {
-			connect(input: Input) {
-				//TODO
+			connect(remote: Input | Output) {
+				const input = this.io as Input;
+				switch(remote.io) {
+					case 'input':
+						if(remote.connection !== undefined) {
+							throw new Error("Tried to connect to an input that's already connected elsewhere");
+						}
+						const constTool = this.toolManager.addConstant(remote.name, remote.val);
+						this.toolManager.connect(remote, constTool.output);
+						this.toolManager.connect(input, constTool.output);
+						break;
+					case 'output':
+						this.toolManager.connect(input, remote);
+						break;
+				}
 			},
-			disconnect(input: Input) {
-				this.toolManager.disconnect(input);
+			disconnect() {
+				this.toolManager.disconnect(this.io as Input);
 			},
-			makeConstant(input: Input) {
+			makeConstant() {
+				const input = this.io as Input;
 				const tool = this.toolManager.addConstant(input.name, input.val);
 				this.toolManager.connect(input, tool.output);
 			},
