@@ -965,6 +965,7 @@ export class ToolManager {
 			},
 			lockAutoLayout: (lockAutoLayout === undefined) ? undefined : lockAutoLayout,
 			watches: Array.from(this.iterWatches(false)).map(io => [ io.tool.name, io.name ]),
+			selectedTool: this.selectedTool ? this.selectedTool.name : undefined,
 		};
 		switch(fmt) {
 			//TODO Need a better way to compact obj (was using clean-deep)
@@ -1063,6 +1064,7 @@ export class ToolManager {
 
 		// Success. Replace the existing tools with the loaded set
 		this.tools = Array.from(insts.values());
+		this.selectedTool = this.tools.find(tool => tool.name === obj.selectedTool);
 		setTimeout(() => this.updateData(), 0);
 
 		return {

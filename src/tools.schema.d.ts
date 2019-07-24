@@ -38,4 +38,5 @@ export interface Tools {
     scale: number;
   };
   lockAutoLayout?: boolean;
+  selectedTool?: string;
 }

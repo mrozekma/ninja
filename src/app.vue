@@ -336,7 +336,6 @@
 					if(ret.lockAutoLayout !== undefined) {
 						this.lockAutoLayout = ret.lockAutoLayout;
 					}
-					this.toolManager.selectedTool = undefined;
 					//TODO Undo the viewport/auto-layout changes. Probably better to serialize the old state and make the undo deserialize it
 					this.$snackbar.open({
 						message: 'Tools loaded',

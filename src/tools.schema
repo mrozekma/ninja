@@ -91,6 +91,7 @@
 				"scale": { "type": "number" }
 			}
 		},
-		"lockAutoLayout": { "type": "boolean" }
+		"lockAutoLayout": { "type": "boolean" },
+		"selectedTool": { "type": "string" }
 	}
 }
