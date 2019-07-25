@@ -18,8 +18,9 @@
 		},
 		computed: {
 			mnemonics(): string {
-				// This needs to share the alt hotkey space with the property-view. Mnemonics in 'reserved' are already in use there
-				const reserved = 'n';
+				//TODO Smarter algorithm that scores letters so early fields can't take a letter that would've been better on a later field
+				// Alt+d is used by browsers to go to the address bar. Alt+n is used by property-view for the Name field
+				const reserved = 'dn';
 				return this.tool.inputs.reduce((mnemonics: string, input: Input) => {
 					const description = input.description.toLowerCase();
 					for(let i = 0; i < description.length; i++) {

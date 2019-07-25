@@ -218,7 +218,7 @@
 						let buf;
 						try {
 							//TODO This will return partial results if the string starts with valid bytes, which is probably bad
-							buf = Buffer.from(str.replace(/[-: ]/g, ''), 'hex');
+							buf = Buffer.from(str.replace(/[-: \t\r\n]/g, ''), 'hex');
 						} catch(e) {
 							this.$snackbar.open({
 								message: `Failed to paste bytes: ${e.message}`,
