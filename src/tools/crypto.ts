@@ -158,8 +158,8 @@ class AESTool extends ReversibleTool {
 
 	private checkKeyLen() {
 		const keyLen = this.key.val.length;
-		if(keyLen != 16 && keyLen != 20 && keyLen != 24) {
-			throw new Error(`Invalid ${keyLen * 8}-bit key. Must be 128, 160, or 192 bits`);
+		if(keyLen != 16 && keyLen != 24 && keyLen != 32) {
+			throw new Error(`Invalid ${keyLen * 8}-bit key. Must be 128, 192, or 256 bits`);
 		}
 	}
 
