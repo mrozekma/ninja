@@ -21,6 +21,10 @@
 				<b-tag slot="trigger" type="is-primary" class="clickable">
 					<i class="fas fa-caret-down"></i>
 				</b-tag>
+				<b-dropdown-item v-for="option in copyOptions" :key="option.text" @click="copy(option.formatter)">
+					<i :class="option.icon || 'fas fa-clipboard'"></i> {{ option.text }}
+				</b-dropdown-item>
+				<b-dropdown-item v-if="copyOptions.length > 1" :separator="true"></b-dropdown-item>
 				<template v-if="io.io == 'input'">
 					<b-dropdown-item v-if="io.connection === undefined" @click="showConnectDialog = true"><i class="fas fa-link"></i> Connect</b-dropdown-item>
 					<b-dropdown-item v-else @click="disconnect()"><i class="fas fa-unlink"></i> Disconnect</b-dropdown-item>
@@ -42,7 +46,15 @@
 </template>
 
 <script lang="ts">
-	import { Input, Output, ToolState, ToolInst, ConstantTool } from '@/tools';
+	import * as clipboard from 'clipboard-polyfill';
+
+	import { Input, Output, ToolState, ToolInst, ConstantTool, IOValTypes } from '@/tools';
+
+	interface CopyOption {
+		text: string;
+		icon?: string;
+		formatter: (val: any) => string;
+	}
 
 	import Vue, { PropType } from 'vue';
 	import ConnectDialog from '@/components/connect-dialog.vue';
@@ -64,6 +76,26 @@
 			arrayLen(): number | undefined {
 				return Array.isArray(this.io.val) ? this.io.val.length : undefined;
 			},
+			copyOptions(): CopyOption[] {
+				switch(this.io.type) {
+					case 'bytes':
+						return [
+							{ text: 'Copy (001122...)', formatter: (buf: Buffer) => buf.toString('hex') },
+							{ text: 'Copy (00:11:22:...)', formatter: (buf: Buffer) => buf.toString('hex').replace(/..(?!$)/g, '$&:') },
+							{ text: 'Copy (C array)', formatter: (buf: Buffer) => '{' + (buf.toString('hex').match(/../g) || []).map(b => `0x${b}`).join(', ') + '}'},
+						];
+					case 'number':
+						return [
+							{ text: 'Copy (dec)', formatter: (n: number) => n.toString(10) },
+							{ text: 'Copy (hex)', formatter: (n: number) => (n >= 0 ? '0x' : '') + n.toString(16) },
+						];
+					default:
+						//TODO More options for arrays? They're not commonly used at the moment
+						return [
+							{ text: 'Copy', formatter: (v: IOValTypes) => v.toString() },
+						];
+				}
+			},
 		},
 		data() {
 			return {
@@ -77,6 +109,17 @@
 			},
 		},
 		methods: {
+			copy(formatter: (val: any) => string = val => val.toString()) {
+				clipboard.writeText(formatter(this.io.val))
+					.then(() => this.$snackbar.open({
+						message: "Value copied to clipboard",
+						type: 'is-info',
+					}))
+					.catch(e => this.$snackbar.open({
+						message: `Failed to write to clipboard (${e})`,
+						type: 'is-danger',
+					}));
+			},
 			connect(remote: Input | Output) {
 				const input = this.io as Input;
 				switch(remote.io) {
