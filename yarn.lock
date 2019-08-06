@@ -4525,6 +4525,11 @@ indexof@0.0.1:
   resolved "https://registry.yarnpkg.com/indexof/-/indexof-0.0.1.tgz#82dc336d232b9062179d05ab3293a66059fd435d"
   integrity sha1-gtwzbSMrkGIXnQWrMpOmYFn9Q10=
 
+infix@^1.3.1:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/infix/-/infix-1.3.1.tgz#4ba45333756c6baec36620e8708692c55f0ac74a"
+  integrity sha1-S6RTM3Vsa67DZiDocIaSxV8Kx0o=
+
 inflight@^1.0.4:
   version "1.0.6"
   resolved "https://registry.yarnpkg.com/inflight/-/inflight-1.0.6.tgz#49bd6331d7d02d0c09bc910a1075ba8165b56df9"
