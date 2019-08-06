@@ -643,12 +643,18 @@
 					}, 10, 'center', 'top');
 				}
 				for(const { field, rect } of layout.outputs) {
-					this.text(field.name, {
+					const paddedRect = {
 						x: rect.x - textPad,
 						y: rect.y - 10,
 						width: rect.width + 2 * textPad,
 						height: 1,
-					}, 10, 'center', 'top');
+					}
+					this.text(field.name, paddedRect, 10, 'center', 'top');
+					if(field.type == 'boolean') {
+						const [ icon, color ] = field.val ? [ '\uf00c', '#57ff5a' ] : [ '\uf00d', '#ffdd57' ];
+						this.ctx.fillStyle = color;
+						this.text(icon, { ...paddedRect, y: paddedRect.y - 8}, 8, 'center', 'top', false, 'FontAwesome');
+					}
 				}
 			},
 
