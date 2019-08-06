@@ -996,7 +996,7 @@ export class ToolManager {
 		// Instantiate all the tools and set their locations and fixed inputs
 		const insts = new Map<String, ToolInst>();
 		for(const tool of obj.tools) {
-			const def = availableDefs.find(def => def.name == tool.type);
+			const def = tool.type == constantDef.name ? constantDef : availableDefs.find(def => def.name == tool.type);
 			if(def === undefined) {
 				throw new Error(`Unknown tool type: ${tool.type}`);
 			}

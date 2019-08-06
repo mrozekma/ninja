@@ -14,14 +14,6 @@ import crypto from '@/tools/crypto';
 import math from '@/tools/math';
 
 const groups: ToolGroup[] = [{
-	name: 'Test',
-	icon: 'fas fa-vial',
-	tools: test,
-}, {
-	name: 'Assert',
-	icon: 'fas fa-equals',
-	tools: assert,
-}, {
 	name: 'Text',
 	icon: 'fas fa-envelope-open-text',
 	tools: text,
@@ -37,5 +29,16 @@ const groups: ToolGroup[] = [{
 	name: 'Math',
 	icon: 'fas fa-calculator',
 	tools: math,
+}, {
+	name: 'Assert',
+	icon: 'fas fa-equals',
+	tools: assert,
 }];
+if(process.env.NODE_ENV === 'development') {
+	groups.unshift({
+		name: 'Test',
+		icon: 'fas fa-vial',
+		tools: test,
+	});
+}
 export default groups;
