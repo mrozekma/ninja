@@ -208,6 +208,13 @@
 			onStopLongPress(inc) {
 				const d = new Date()
 				if (d - this._$intervalTime < 100) {
+					// Added:
+					if(event.ctrlKey && inc && this.maxNumber !== undefined) {
+						this.computedValue = this.maxNumber;
+					} else if(event.ctrlKey && !inc && this.minNumber !== undefined) {
+						this.computedValue = this.minNumber;
+					} else
+
 					if (inc) this.increment()
 					else this.decrement()
 				}

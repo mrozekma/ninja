@@ -7,11 +7,21 @@ class AssertEqual extends ToolInst {
 	private eq: Output = this.makeBooleanOutput('eq', 'Equal?');
 
 	protected onInputSet(input: Input) {
-		if(input === this.type) {
-			this.in1.type = this.in2.type = this.type.val;
-			//TODO This throws an exception if the val isn't convertable. Same problem in PassthroughTool
-			this.propagateInputVal(this.in1);
-			this.propagateInputVal(this.in2);
+		switch(input) {
+			case this.type:
+				this.in1.type = this.in2.type = this.type.val;
+				//TODO This throws an exception if the val isn't convertable. Same problem in PassthroughTool
+				this.propagateInputVal(this.in1);
+				this.propagateInputVal(this.in2);
+				break;
+			case this.in1:
+			case this.in2:
+				if(input.connection !== undefined) {
+					// If a connection was made, dynamically change type to the type of the connected output
+					const type = input.connection.output.type;
+					this.setInputVal(this.type, (type == 'enum') ? 'string' : (type == 'enum[]') ? 'string[]' : type);
+				}
+				break;
 		}
 	}
 

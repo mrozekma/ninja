@@ -381,9 +381,11 @@ export abstract class ToolInst {
 
 		console.log(`${this.name}.${input.name} = ${val}`);
 		const oldVal = input.val;
-		(input.val as IOValTypes) = val;
-		this.state = ToolState.stale;
-		this.onInputSet(input, oldVal);
+		if(val !== oldVal) {
+			(input.val as IOValTypes) = val;
+			this.state = ToolState.stale;
+			this.onInputSet(input, oldVal);
+		}
 	}
 
 	propagateInputVal(input: Input) {
@@ -509,12 +511,17 @@ export abstract class PassthroughTool extends ToolInst {
 	protected out: Output = this.makeNumberOutput('out', 'Output');
 
 	inputDeserializeOrder = [ 'type' ];
+	protected dynamicType = true;
 
 	protected onInputSet(input: Input, oldVal?: string | number | boolean) {
 		if(input === this.type) {
 			this.setInputType(this.inp, this.type.val);
 			this.setOutputType(this.out, this.type.val);
 			this.propagateInputVal(this.inp);
+		} else if(input === this.inp && input.connection !== undefined && this.dynamicType) {
+			// If a connection was made, dynamically change type to the type of the connected output
+			const type = input.connection.output.type;
+			this.setInputVal(this.type, (type == 'enum') ? 'string' : (type == 'enum[]') ? 'string[]' : type);
 		}
 	}
 
@@ -571,6 +578,8 @@ export abstract class ReversibleTool extends ToolInst {
 }
 
 export class ConstantTool extends PassthroughTool {
+	dynamicType = false;
+
 	constructor(def: ToolDef<ConstantTool>, name: string) {
 		super(def, name);
 		this.type.description = 'Type';

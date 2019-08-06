@@ -9,6 +9,7 @@ export interface ToolGroup {
 import test from '@/tools/test';
 import assert from '@/tools/assert';
 import text from '@/tools/text';
+import array from '@/tools/array';
 import crypto from '@/tools/crypto';
 
 const groups: ToolGroup[] = [{
@@ -23,6 +24,10 @@ const groups: ToolGroup[] = [{
 	name: 'Text',
 	icon: 'fas fa-envelope-open-text',
 	tools: text,
+}, {
+	name: 'Array',
+	icon: 'far fa-list-alt',
+	tools: array,
 }, {
 	name: 'Crypto',
 	icon: 'fas fa-lock',
