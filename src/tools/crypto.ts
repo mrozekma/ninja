@@ -120,7 +120,8 @@ abstract class CipherTool extends ReversibleTool {
 	}
 
 	protected abstract getAlgorithm(mode: typeof cipherModes[number]): string | undefined;
-	protected abstract get blockSize(): number;
+	protected abstract get blockLength(): number;
+	protected abstract get keyLengths(): number[];
 
 	private get modeInfo() {
 		return cipherModes.find(mode => mode.name == this.mode.val)!;
@@ -167,8 +168,21 @@ abstract class CipherTool extends ReversibleTool {
 
 	private checkKeyLen() {
 		const keyLen = this.key.val.length;
-		if(keyLen != 16 && keyLen != 24 && keyLen != 32) {
-			throw new Error(`Invalid ${keyLen * 8}-bit key. Must be 128, 192, or 256 bits`);
+		const validLens = this.keyLengths;
+		if(validLens.indexOf(keyLen) == -1) {
+			const validLenDesc = (() => {
+				switch(validLens.length) {
+					case 1:
+						return `${validLens[0] * 8} bits`;
+					case 2:
+						return `${validLens[0] * 8} or ${validLens[1] * 8} bits`;
+					default:
+						const strs = validLens.map(len => (len * 8).toString());
+						const last = strs.pop();
+						return `${strs.join(', ')}, or ${last} bits`;
+				}
+			})();
+			throw new Error(`Invalid ${keyLen * 8}-bit key. Must be ${validLenDesc}`);
 		}
 	}
 
@@ -179,7 +193,7 @@ abstract class CipherTool extends ReversibleTool {
 			iv: forge.util.createBuffer(this.iv.val),
 			additionalData: this.modeInfo.hasTag ? forge.util.createBuffer(this.aad.val) : undefined,
 		});
-		const padded = this.paddingModeInfo.pad(this.in.val, this.blockSize);
+		const padded = this.paddingModeInfo.pad(this.in.val, this.blockLength);
 		cipher.update(forge.util.createBuffer(padded));
 		cipher.finish(() => true);
 		this.out.val = Buffer.from(cipher.output.toHex(), 'hex');
@@ -201,7 +215,7 @@ abstract class CipherTool extends ReversibleTool {
 			throw new Error("Decryption failed");
 		}
 		const padded = Buffer.from(cipher.output.toHex(), 'hex');
-		this.out.val = this.paddingModeInfo.unpad(padded, this.blockSize);
+		this.out.val = this.paddingModeInfo.unpad(padded, this.blockLength);
 	}
 }
 
@@ -210,8 +224,26 @@ class AESTool extends CipherTool {
 		return mode.aesAlgorithm;
 	}
 
-	protected get blockSize(): number {
+	protected get blockLength(): number {
 		return 16;
+	}
+
+	protected get keyLengths(): number[] {
+		return [ 16, 24, 32 ];
+	}
+}
+
+class DESTool extends CipherTool {
+	protected getAlgorithm(mode: typeof cipherModes[number]): string | undefined {
+		return mode.desAlgorithm;
+	}
+
+	protected get blockLength(): number {
+		return 8;
+	}
+
+	protected get keyLengths(): number[] {
+		return [ 8, 24 ];
 	}
 }
 
@@ -237,5 +269,6 @@ class CaesarTool extends ReversibleTool {
 
 export default [
 	makeDef(AESTool, 'AES', 'AES'),
+	makeDef(DESTool, 'DES', 'DES'),
 	makeDef(CaesarTool, "Caesar shift", "Caesar shift"),
 ];
