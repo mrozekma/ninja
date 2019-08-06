@@ -265,18 +265,22 @@
 				return outputs.map<OutputConnector>(output => ({ type: 'output', field: output, rect: rects.next().value }));
 			},
 
+			getToolWidth(tool: ToolInst): number {
+				return Math.max(
+					TOOL_WIDTH,
+					(2 * CONNECTOR_RADIUS + CONNECTOR_GAP) * tool.inputs.length,
+					(2 * CONNECTOR_RADIUS + CONNECTOR_GAP) * tool.outputs.length,
+				);
+			},
+
 			layoutTool(tool: ToolInst): ToolLayout {
 				if(tool.loc === undefined) {
 					throw new Error("Can't layout tool with no location");
 				}
 				const rect: Rect = {
 					...tool.loc,
-					width: Math.max(
-						TOOL_WIDTH,
-						(2 * CONNECTOR_RADIUS + CONNECTOR_GAP) * tool.inputs.length,
-						(2 * CONNECTOR_RADIUS + CONNECTOR_GAP) * tool.outputs.length,
-					),
-					height: TOOL_HEIGHT
+					width: this.getToolWidth(tool),
+					height: TOOL_HEIGHT,
 				};
 				const inputs = this.layoutInputs(tool.inputs, rect);
 				const outputs = this.layoutOutputs(tool.outputs, { ...rect, y: rect.y + rect.height });
@@ -348,7 +352,7 @@
 				g.setDefaultEdgeLabel(() => ({}));
 				const locTools = this.toolManager.tools.filter(tool => tool.loc !== undefined);
 				for(const tool of locTools) {
-					g.setNode(tool.name, { width: TOOL_WIDTH, height: TOOL_HEIGHT });
+					g.setNode(tool.name, { width: this.getToolWidth(tool), height: TOOL_HEIGHT });
 				}
 				for(const tool of locTools) {
 					for(const input of tool.inputs) {

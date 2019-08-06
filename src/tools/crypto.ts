@@ -2,20 +2,22 @@ import { makeDef, ToolInst, Input, ToolDef, ReversibleTool } from '@/tools';
 
 //@ts-ignore No declaration file
 import { encrypt as caesarShift, decrypt as caesarUnshift } from 'caesar-shift';
-import crypto from 'crypto';
+import forge from 'node-forge';
 
 const cipherModes: {
-	name: string;
+	name: 'ECB' | 'CBC' | 'CFB' | 'OFB' | 'CTR' | 'GCM';
 	hasIv: boolean;
 	hasTag: boolean;
 	isStream: boolean;
+	aesAlgorithm?: 'AES-ECB' | 'AES-CBC' | 'AES-CFB' | 'AES-OFB' | 'AES-CTR' | 'AES-GCM';
+	desAlgorithm?: 'DES-ECB' | 'DES-CBC';
 }[] = [
-	{ name: 'ECB', hasIv: false, hasTag: false, isStream: false },
-	{ name: 'CBC', hasIv: true,  hasTag: false, isStream: false },
-	{ name: 'CFB', hasIv: true,  hasTag: false, isStream: true  },
-	{ name: 'OFB', hasIv: true,  hasTag: false, isStream: true  },
-	{ name: 'CTR', hasIv: true,  hasTag: false, isStream: true  },
-	{ name: 'GCM', hasIv: true,  hasTag: true,  isStream: false },
+	{ name: 'ECB', hasIv: false, hasTag: false, isStream: false, aesAlgorithm: 'AES-ECB', desAlgorithm: 'DES-ECB' },
+	{ name: 'CBC', hasIv: true,  hasTag: false, isStream: false, aesAlgorithm: 'AES-CBC', desAlgorithm: 'DES-CBC' },
+	{ name: 'CFB', hasIv: true,  hasTag: false, isStream: true , aesAlgorithm: 'AES-CFB' },
+	{ name: 'OFB', hasIv: true,  hasTag: false, isStream: true , aesAlgorithm: 'AES-OFB' },
+	{ name: 'CTR', hasIv: true,  hasTag: false, isStream: true , aesAlgorithm: 'AES-CTR' },
+	{ name: 'GCM', hasIv: true,  hasTag: true,  isStream: false, aesAlgorithm: 'AES-GCM' },
 ];
 
 const paddingModes: {
@@ -98,23 +100,27 @@ const paddingModes: {
 	},
 ];
 
-class AESTool extends ReversibleTool {
+abstract class CipherTool extends ReversibleTool {
 	private in = this.makeBytesInput('pt', 'Plaintext');
 	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Encrypt', 'Decrypt' ]);
-	private mode = this.makeEnumInput('mode', 'Mode', 'CBC', cipherModes.map(mode => mode.name));
+	private mode = this.makeEnumInput('mode', 'Mode', 'CBC', cipherModes.filter(mode => this.getAlgorithm(mode) !== undefined).map(mode => mode.name));
 	private padMode = this.makeEnumInput('pad', 'Padding Mode', 'None', paddingModes.map(mode => mode.name));
 	private key = this.makeBytesInput('key', 'Key');
 	private iv = this.makeBytesInput('iv', 'Initialization Vector');
+	private aad = this.makeBytesInput('aad', 'Additional Authenticated Data');
 	private tagIn = this.makeBytesInput('tag', 'Authentication Tag');
 	private out = this.makeBytesOutput('ct', 'Ciphertext');
 	private tagOut = this.makeBytesOutput('tag', 'Authentication Tag');
 
 	readonly inputDeserializeOrder = [ 'dir', 'mode' ]
 
-	constructor(def: ToolDef<AESTool>, name: string) {
+	constructor(def: ToolDef, name: string) {
 		super(def, name);
 		this.registerFields(this.dir, this.in, this.out);
 	}
+
+	protected abstract getAlgorithm(mode: typeof cipherModes[number]): string | undefined;
+	protected abstract get blockSize(): number;
 
 	private get modeInfo() {
 		return cipherModes.find(mode => mode.name == this.mode.val)!;
@@ -126,7 +132,7 @@ class AESTool extends ReversibleTool {
 	}
 
 	get inputs() {
-		const rtn = [ this.in, this.dir, this.mode ];
+		const rtn: Input[] = [ this.in, this.dir, this.mode ];
 		if(!this.modeInfo.isStream) {
 			rtn.push(this.padMode);
 		}
@@ -134,8 +140,11 @@ class AESTool extends ReversibleTool {
 		if(this.modeInfo.hasIv) {
 			rtn.push(this.iv);
 		}
-		if(this.modeInfo.hasTag && !this.dir.val) {
-			rtn.push(this.tagIn);
+		if(this.modeInfo.hasTag) {
+			rtn.push(this.aad);
+			if(!this.dir.val) {
+				rtn.push(this.tagIn);
+			}
 		}
 		return rtn;
 	}
@@ -165,24 +174,44 @@ class AESTool extends ReversibleTool {
 
 	async runForward() {
 		this.checkKeyLen();
-		const cipher = crypto.createCipheriv(`aes-${this.key.val.length * 8}-${this.mode.val.toLowerCase()}`, this.key.val, this.modeInfo.hasIv ? this.iv.val : '');
-		cipher.setAutoPadding(false);
-		const padded = this.paddingModeInfo.pad(this.in.val, 16);
-		this.out.val = Buffer.concat([ cipher.update(padded), cipher.final() ]);
+		const cipher = forge.cipher.createCipher(this.getAlgorithm(this.modeInfo) as forge.cipher.Algorithm, forge.util.createBuffer(this.key.val));
+		cipher.start({
+			iv: forge.util.createBuffer(this.iv.val),
+			additionalData: this.modeInfo.hasTag ? forge.util.createBuffer(this.aad.val) : undefined,
+		});
+		const padded = this.paddingModeInfo.pad(this.in.val, this.blockSize);
+		cipher.update(forge.util.createBuffer(padded));
+		cipher.finish(() => true);
+		this.out.val = Buffer.from(cipher.output.toHex(), 'hex');
 		if(this.modeInfo.hasTag) {
-			this.tagOut.val = (cipher as crypto.CipherGCM).getAuthTag();
+			this.tagOut.val = Buffer.from(cipher.mode.tag.toHex(), 'hex');
 		}
 	}
 
 	async runBackward() {
 		this.checkKeyLen();
-		const cipher = crypto.createDecipheriv(`aes-${this.key.val.length * 8}-${this.mode.val.toLowerCase()}`, this.key.val, this.modeInfo.hasIv ? this.iv.val : '');
-		cipher.setAutoPadding(false);
-		if(this.modeInfo.hasTag) {
-			(cipher as crypto.DecipherGCM).setAuthTag(this.tagIn.val);
+		const cipher = forge.cipher.createDecipher(this.getAlgorithm(this.modeInfo) as forge.cipher.Algorithm, forge.util.createBuffer(this.key.val));
+		cipher.start({
+			iv: forge.util.createBuffer(this.iv.val),
+			tag: this.modeInfo.hasTag ? forge.util.createBuffer(this.tagIn.val) : undefined,
+			additionalData: this.modeInfo.hasTag ? forge.util.createBuffer(this.aad.val) : undefined,
+		});
+		cipher.update(forge.util.createBuffer(this.in.val));
+		if(!cipher.finish(() => true)) {
+			throw new Error("Decryption failed");
 		}
-		const decrypted = Buffer.concat([ cipher.update(this.in.val), cipher.final() ]);
-		this.out.val = this.paddingModeInfo.unpad(decrypted, 16);
+		const padded = Buffer.from(cipher.output.toHex(), 'hex');
+		this.out.val = this.paddingModeInfo.unpad(padded, this.blockSize);
+	}
+}
+
+class AESTool extends CipherTool {
+	protected getAlgorithm(mode: typeof cipherModes[number]): string | undefined {
+		return mode.aesAlgorithm;
+	}
+
+	protected get blockSize(): number {
+		return 16;
 	}
 }
 
