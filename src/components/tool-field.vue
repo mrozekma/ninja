@@ -28,6 +28,7 @@
 				<template v-if="io.io == 'input'">
 					<b-dropdown-item v-if="io.connection === undefined" @click="showConnectDialog = true"><i class="fas fa-link"></i> Connect</b-dropdown-item>
 					<b-dropdown-item v-else @click="disconnect()"><i class="fas fa-unlink"></i> Disconnect</b-dropdown-item>
+					<b-dropdown-item @click="showUploadDialog = true"><i class="fas fa-file-upload"></i> Upload</b-dropdown-item>
 				</template>
 				<b-dropdown-item v-if="!io.watch" @click="io.watch = true"><i class="fas fa-eye"></i> Watch</b-dropdown-item>
 				<b-dropdown-item v-else @click="io.watch = false"><i class="fas fa-eye-slash"></i> Unwatch</b-dropdown-item>
@@ -36,6 +37,9 @@
 			<b-numberinput v-if="arrayLen !== undefined" controls-position="compact" size="is-small" :min="0" :max="arrayLen - 1" :showMax="true" v-model="arrayIdx"></b-numberinput>
 			<b-modal :active.sync="showConnectDialog" has-modal-card>
 				<connect-dialog :io="io" @connect="connect"></connect-dialog>
+			</b-modal>
+			<b-modal :active.sync="showUploadDialog" has-modal-card>
+				<upload-dialog @upload="upload"></upload-dialog>
 			</b-modal>
 		</template>
 		<b-message v-if="io.io == 'input' && io.connection && io.connection.error" type="is-danger">
@@ -48,7 +52,7 @@
 <script lang="ts">
 	import * as clipboard from 'clipboard-polyfill';
 
-	import { Input, Output, ToolState, ToolInst, ConstantTool, IOValTypes } from '@/tools';
+	import { Input, Output, ToolState, ToolInst, ConstantTool, IOValTypes, convertToInputType } from '@/tools';
 
 	interface CopyOption {
 		text: string;
@@ -58,9 +62,10 @@
 
 	import Vue, { PropType } from 'vue';
 	import ConnectDialog from '@/components/connect-dialog.vue';
+	import UploadDialog from '@/components/upload-dialog.vue';
 	import ToolIOComponent from '@/components/tool-io.vue';
 	export default Vue.extend({
-		components: { ConnectDialog, ToolIo: ToolIOComponent },
+		components: { ConnectDialog, UploadDialog, ToolIo: ToolIOComponent },
 		props: {
 			io: Object as PropType<Input | Output>,
 			mnemonic: {
@@ -101,6 +106,7 @@
 			return {
 				arrayIdx: 0,
 				showConnectDialog: false,
+				showUploadDialog: false,
 			};
 		},
 		watch: {
@@ -134,6 +140,15 @@
 					case 'output':
 						this.toolManager.connect(input, remote);
 						break;
+				}
+			},
+			upload(filename: string, buf: Buffer, makeConstant: boolean) {
+				const input = this.io as Input;
+				if(makeConstant) {
+					const constTool = this.toolManager.addConstant(filename, buf);
+					this.toolManager.connect(input, constTool.output);
+				} else {
+					this.toolManager.setInputVal(input, convertToInputType(buf, input));
 				}
 			},
 			disconnect() {
