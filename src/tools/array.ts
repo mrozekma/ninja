@@ -41,26 +41,13 @@ class SliceTool extends ArrayTool {
 	private start = this.makeNumberInput('start', 'Start Index');
 	private end = this.makeNumberInput('end', 'End Index');
 
-	protected onInputSet(input: Input) {
-		super.onInputSet(input);
-		if(input === this.inp) {
-			const len = Buffer.isBuffer(input.val) ? input.val.length : (input.val as any[]).length;
-			for(const numberInp of [ this.start, this.end ]) {
-				numberInp.min = -len;
-				numberInp.max = len;
-				if(numberInp.val < numberInp.min) {
-					numberInp.val = numberInp.min;
-				} else if(numberInp.val > numberInp.max) {
-					numberInp.val = numberInp.max;
-				}
-			}
-		}
-	}
-
 	async runImpl() {
 		const len = Buffer.isBuffer(this.inp.val) ? this.inp.val.length : (this.inp.val as any[]).length;
-		const start = this.start.val + ((this.start.val < 0) ? len : 0);
-		const end = this.end.val + ((this.end.val < 0) ? len : 0);
+		let start = this.start.val + ((this.start.val < 0) ? len : 0);
+		let end = this.end.val + ((this.end.val < 0) ? len : 0);
+		if(start >= len || start >= end) {
+			start = end = 0;
+		}
 		this.out.val = (this.inp.val as Buffer | any[]).slice(start, end);
 	}
 }
