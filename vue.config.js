@@ -16,6 +16,7 @@ module.exports = {
 		disableHostCheck: true,
 	},
 	outputDir: selfContained ? 'dist-sc' : 'dist',
+	publicPath: '',
 
 	configureWebpack: config => {
 		if(config.mode == 'development' && selfContained) {
