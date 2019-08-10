@@ -28,8 +28,9 @@
 		return 'tool-editor-' + def.name.toLowerCase().replace(/[^-a-z-]/g, '-');
 	}
 
-	const editors: {[K: string]: (() => Promise<any>)} = {
-		'tool-auto-editor': () => import('@/tools/auto-editor.vue'),
+	import autoEditor from '@/tools/auto-editor.vue';
+	const editors: {[K: string]: VueConstructor} = {
+		'tool-auto-editor': autoEditor,
 	};
 	for(const group of groups) {
 		for(const def of group.tools) {
@@ -44,7 +45,7 @@
 		error?: string;
 	}
 
-	import Vue from 'vue';
+	import Vue, { VueConstructor } from 'vue';
 	export default Vue.extend({
 		components: editors,
 		computed: {

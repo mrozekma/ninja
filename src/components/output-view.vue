@@ -16,8 +16,9 @@
 		return 'tool-viewer-' + def.name.toLowerCase().replace(/[^-a-z-]/g, '-');
 	}
 
-	const viewers: {[K: string]: (() => Promise<any>)} = {
-		'tool-auto-viewer': () => import('@/tools/auto-viewer.vue'),
+	import autoViewer from '@/tools/auto-viewer.vue';
+	const viewers: {[K: string]: VueConstructor} = {
+		'tool-auto-viewer': autoViewer,
 	};
 	for(const group of groups) {
 		for(const def of group.tools) {
@@ -27,7 +28,7 @@
 		}
 	}
 
-	import Vue from 'vue';
+	import Vue, { VueConstructor } from 'vue';
 	export default Vue.extend({
 		components: viewers,
 		computed: {

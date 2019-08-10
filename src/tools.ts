@@ -1,16 +1,20 @@
 import importSchema, { Tools as SerializedData } from './tools.schema';
 
 import { Validator } from 'jsonschema';
+import { VueConstructor } from 'vue';
 
 export type ToolDef<T extends ToolInst = ToolInst> = {
 	name: string;
 	description: string;
 	gen: (name: string) => T;
-	editor?: () => Promise<any>;
-	viewer?: () => Promise<any>;
+	//TODO Self-contained builds don't work with dynamic imports; haven't figured out why yet
+	// editor?: () => Promise<any>;
+	// viewer?: () => Promise<any>;
+	editor?: VueConstructor;
+	viewer?: VueConstructor;
 }
 
-export function makeDef<T extends ToolInst>(ctor: { new(def: ToolDef<T>, name: string): T }, name: string, description: string, editor?: () => Promise<any>, viewer?: () => Promise<any>): ToolDef<T> {
+export function makeDef<T extends ToolInst>(ctor: { new(def: ToolDef<T>, name: string): T }, name: string, description: string, editor?: VueConstructor, viewer?: VueConstructor): ToolDef<T> {
 	const rtn: ToolDef<T> = {
 		name,
 		description,
@@ -622,7 +626,8 @@ export class ConstantTool extends PassthroughTool {
 	get output() { return this.out; }
 }
 
-export const constantDef = makeDef(ConstantTool, 'Constant', 'Constant value', undefined, () => import('@/tools/const-viewer.vue'));
+import constViewer from '@/tools/const-viewer.vue';
+export const constantDef = makeDef(ConstantTool, 'Constant', 'Constant value', undefined, constViewer);
 
 class SetWithChangedFlag<T> extends Set<T> {
 	private _changed = false;

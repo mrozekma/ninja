@@ -91,11 +91,13 @@ export class JSONDisplayTool extends ToolInst {
 	async runImpl() {}
 }
 
+import jsonViewer from '@/tools/json-viewer.vue';
+
 export default [
 	makeDef(StringEncodeDecodeTool, 'Encode/Decode', 'String encode/decode'),
 	makeDef(TextSplitTool, 'Split', 'Split text'),
 	makeDef(RegexMatchTool, 'Regex', 'Regular expression match'),
 	makeDef(TextArrayIndexTool, 'Index', 'Index into an array'),
 	makeDef(Base64Tool, 'Base64', 'Base64 encoder/decoder'),
-	makeDef(JSONDisplayTool, 'JSON display', 'JSON display', undefined, () => import('@/tools/json-viewer.vue')),
+	makeDef(JSONDisplayTool, 'JSON display', 'JSON display', undefined, jsonViewer),
 ];
