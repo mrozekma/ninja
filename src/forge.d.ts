@@ -581,7 +581,8 @@ declare module "node-forge" {
 	namespace md {
 
 		interface MessageDigest {
-			update(msg: string, encoding?: Encoding): MessageDigest;
+			// mrozekma -- Added ByteBuffer option for 'msg'
+			update(msg: string | util.ByteBuffer, encoding?: Encoding): MessageDigest;
 			digest(): util.ByteStringBuffer;
 		}
 
@@ -599,6 +600,14 @@ declare module "node-forge" {
 
 		namespace sha512 {
 			function create(): MessageDigest;
+
+			// mmrozek -- Added these:
+			namespace sha224 {
+				function create(): MessageDigest;
+			}
+			namespace sha256 {
+				function create(): MessageDigest;
+			}
 		}
 
 		namespace md5 {

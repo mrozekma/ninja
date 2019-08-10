@@ -267,8 +267,71 @@ class CaesarTool extends ReversibleTool {
 	}
 }
 
+class SHATool extends ToolInst {
+	private msg = this.makeBytesInput('msg', 'Message');
+	private alg = this.makeEnumInput('alg', 'Algorithm', 'SHA-256', [ 'SHA-1', 'SHA-256', 'SHA-384', 'SHA-512', 'SHA-512/224', 'SHA-512/256' ]);
+	private hash = this.makeBytesOutput('hash', 'Digest');
+
+	private makeForge(): forge.md.MessageDigest {
+		switch(this.alg.val) {
+			case 'SHA-1': return forge.md.sha1.create();
+			case 'SHA-256': return forge.md.sha256.create();
+			case 'SHA-384': return forge.md.sha384.create();
+			case 'SHA-512': return forge.md.sha512.create();
+			case 'SHA-512/224': return forge.md.sha512.sha224.create();
+			case 'SHA-512/256': return forge.md.sha512.sha256.create();
+			//TODO SHA3. Not supported in forge, will need another lib
+		}
+	}
+
+	async runImpl() {
+		const md = this.makeForge();
+		md.update(this.msg.val.toString());
+		this.hash.val = Buffer.from(md.digest().toHex(), 'hex');
+	}
+}
+
+class MD5Tool extends ToolInst {
+	private msg = this.makeBytesInput('msg', 'Message');
+	private hash = this.makeBytesOutput('hash', 'Digest');
+
+	async runImpl() {
+		const md = forge.md.md5.create();
+		md.update(this.msg.val.toString());
+		this.hash.val = Buffer.from(md.digest().toHex(), 'hex');
+	}
+}
+
+class HMACTool extends ToolInst {
+	private msg = this.makeBytesInput('msg', 'Message');
+	private alg = this.makeEnumInput('alg', 'Algorithm', 'SHA-256', [ 'SHA-1', 'SHA-256', 'MD5' ]);
+	private key = this.makeBytesInput('key', 'Key');
+	private hash = this.makeBytesOutput('hash', 'Digest');
+
+	async runImpl() {
+		const hmac = forge.hmac.create();
+		const key = this.key.val.toString();
+		switch(this.alg.val) {
+			case 'SHA-1':
+				hmac.start('sha1', key);
+				break;
+			case 'SHA-256':
+				hmac.start('sha256', key);
+				break;
+			case 'MD5':
+				hmac.start('md5', key);
+				break;
+		}
+		hmac.update(this.msg.val.toString());
+		this.hash.val = Buffer.from(hmac.digest().toHex(), 'hex');
+	}
+}
+
 export default [
 	makeDef(AESTool, 'AES', 'AES'),
 	makeDef(DESTool, 'DES', 'DES'),
+	makeDef(SHATool, 'SHA', 'SHA'),
+	makeDef(MD5Tool, 'MD5', 'MD5'),
+	makeDef(HMACTool, 'HMAC', 'HMAC'),
 	makeDef(CaesarTool, "Caesar shift", "Caesar shift"),
 ];
