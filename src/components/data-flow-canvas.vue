@@ -450,11 +450,13 @@
 					}
 				}
 
-				this.ctx.save();
-				this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-				this.ctx.fillStyle = '#fff';
-				this.text(`(${this.viewport.translation.x}, ${this.viewport.translation.y}) x ${this.viewport.scale}`, {x: 0, y: 0, width: this.canvas.width, height: this.canvas.height}, 10, 'left', 'bottom');
-				this.ctx.restore();
+				if(process.env.NODE_ENV === 'development') {
+					this.ctx.save();
+					this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+					this.ctx.fillStyle = '#fff';
+					this.text(`(${this.viewport.translation.x}, ${this.viewport.translation.y}) x ${this.viewport.scale}`, {x: 0, y: 0, width: this.canvas.width, height: this.canvas.height}, 10, 'left', 'bottom');
+					this.ctx.restore();
+				}
 			},
 
 			findFontSize(font: string, text: string, rect: Rect, max?: number) {
