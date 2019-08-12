@@ -45,6 +45,7 @@ class SliceTool extends ArrayTool {
 	inputDeserializeOrder = [ 'type', 'etyp' ];
 
 	protected onInputSet(input: Input) {
+		super.onInputSet(input);
 		if(input === this.endType) {
 			switch(this.endType.val) {
 				case 'Index':
