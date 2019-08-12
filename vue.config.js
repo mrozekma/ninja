@@ -66,6 +66,7 @@ module.exports = {
 			args[0].BUILD_VERSION = JSON.stringify(gitDesc.replace(/^heads\//, '').trim());
 			args[0].BUILD_DATE = JSON.stringify(new Date().toGMTString());
 			args[0].HAS_LICENSES = JSON.stringify(config.mode == 'production' && !selfContained);
+			args[0].SHORTENER = JSON.stringify(process.env.SHORTENER || undefined);
 			return args;
 		});
 	},

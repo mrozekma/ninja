@@ -23,7 +23,7 @@
 					</div>
 				</div>
 				<a v-tooltip="'Save'" :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="startSave"><i class="fas fa-save"></i></a>
-				<a v-tooltip="'Share'" :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="doSave('clipboard', '')"><i class="fas fa-share-alt"></i></a>
+				<a v-tooltip="'Share'" :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="doSave('clipboard', '', true)"><i class="fas fa-share-alt"></i></a>
 				<a v-tooltip="'Run'" :class="['navbar-item', 'navbar-toolbar-item', {disabled: !anyTools}]" @click="runAll"><i class="fas fa-play-circle"></i></a>
 				<a v-tooltip="'Settings'" class="navbar-item navbar-toolbar-item" @click="showSettingsDialog = true"><i class="fas fa-cog"></i></a>
 			</div>
@@ -124,7 +124,11 @@
 </template>
 
 <script lang="ts">
+	// From DefinePlugin
+	declare var SHORTENER: string | undefined;
+
 	import Vue from 'vue';
+	import axios from 'axios';
 
 	import Buefy from 'buefy';
 	// import 'buefy/dist/buefy.css';
@@ -242,7 +246,7 @@
 				return false;
 			});
 			hotkeys('ctrl+.', () => {
-				this.doSave('clipboard', '');
+				this.doSave('clipboard', '', true);
 				return false;
 			});
 			hotkeys('ctrl+f', () => {
@@ -367,7 +371,7 @@
 				this.showSaveDialog = true;
 			},
 
-			doSave(target: 'browser' | 'disk' | 'clipboard', name: string) {
+			async doSave(target: 'browser' | 'disk' | 'clipboard', name: string, shorten?: boolean) {
 				if(!this.anyTools) {
 					return this.showNoToolsWarning();
 				}
@@ -387,19 +391,47 @@
 						saveAs(new Blob([ serialize('friendly') ], { type: 'text/plain' }), `${name}.ninja`);
 						break;
 					case 'clipboard':
-						clipboard.writeText(window.location.href.split('#')[0] + '#' + serialize('base64'))
-							.then(() => this.$snackbar.open({
+						let url: string | undefined = undefined;
+						if(shorten && SHORTENER) {
+							try {
+								url = await this.shortenLink(serialize('base64'));
+							} catch(e) {
+								this.$snackbar.open({
+									message: 'Failed to shorten URL. Will use long URL instead',
+									type: 'is-danger',
+									position: 'is-top',
+								});
+							}
+						}
+						if(url === undefined) {
+							url = window.location.href.split('#')[0] + '#' + serialize('base64');
+						}
+						try {
+							await clipboard.writeText(url);
+							this.$snackbar.open({
 								message: "Link copied to clipboard",
 								type: 'is-info',
 								position: 'is-top',
-							}))
-							.catch(e => this.$snackbar.open({
+							});
+						} catch(e) {
+							this.$snackbar.open({
 								message: `Failed to write to clipboard (${e})`,
 								type: 'is-danger',
 								position: 'is-top',
-							}));
+							});
+						}
 						break;
 				}
+			},
+
+			async shortenLink(serialized: string): Promise<string> {
+				const resp = await axios.get(SHORTENER! + serialized);
+				if(resp.status != 201) {
+					console.error(SHORTENER! + serialized, resp);
+					throw new Error(`Unexpected response from URL shortener: ${resp.status}`);
+				}
+				const url: string = resp.request.responseURL;
+				return url.replace(/\?no-redirect$/, '');
 			},
 
 			deleteTool(tool: ToolInst) {

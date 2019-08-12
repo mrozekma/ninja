@@ -9,6 +9,7 @@
 	},
 	"dependencies": {
 		"@fortawesome/fontawesome-free": "^5.9.0",
+		"axios": "^0.19.0",
 		"buefy": "^0.7.7",
 		"caesar-shift": "^1.0.0",
 		"clipboard-polyfill": "^2.8.1",
