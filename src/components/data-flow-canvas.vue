@@ -651,6 +651,7 @@
 						width: rect.width + 2 * textPad,
 						height: 1,
 					}
+					this.ctx.fillStyle = '#fff';
 					this.text(field.name, paddedRect, 10, 'center', 'top');
 					if(field.type == 'boolean') {
 						const [ icon, color ] = field.val ? [ '\uf00c', '#57ff5a' ] : [ '\uf00d', '#ffdd57' ];
