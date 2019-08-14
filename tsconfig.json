@@ -20,7 +20,8 @@
 			"esnext",
 			"dom",
 			"dom.iterable",
-			"scripthost"
+			"scripthost",
+			"es2020.string" // string.matchAll()
 		]
 	},
 	"include": [

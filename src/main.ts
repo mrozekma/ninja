@@ -4,6 +4,9 @@ import settings, { Settings } from '@/settings';
 import Vue from 'vue';
 import App from './app.vue';
 
+// string.matchAll() is new enough that it seems worth polyfilling
+require('string.prototype.matchall').shim();
+
 Vue.config.productionTip = false;
 
 // Add 'toolManager' and 'settings' props on every component
