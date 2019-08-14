@@ -49,7 +49,7 @@ class RegexMatchTool extends ToolInst {
 
 export abstract class TemplateExprTool<VarType extends Input> extends ToolInst {
 	// Match $foo and ${foo}, but not $$foo
-	protected static re = /(?<!\$)\$(?:([a-zA-Z_][a-zA-Z0-9_]*)|{([a-zA-Z_][a-zA-Z0-9_]*)})/g;
+	protected static re = /([^$]|^)\$(?:([a-zA-Z_][a-zA-Z0-9_]*)|{([a-zA-Z_][a-zA-Z0-9_]*)})/g;
 
 	protected expr = this.makeStringInput('expr', 'Expression');
 	protected vars = new Map<string, {
@@ -64,7 +64,7 @@ export abstract class TemplateExprTool<VarType extends Input> extends ToolInst {
 			const matches = this.expr.val.matchAll(TemplateExprTool.re);
 			this.vars.forEach(v => v.count = 0);
 			for(const match of matches) {
-				const name = match[1] || match[2]; // match[1] is set if $foo, match[2] is set if ${foo}
+				const name = match[2] || match[3]; // match[2] is set if $foo, match[3] is set if ${foo}
 				const entry = this.vars.get(name);
 				if(entry !== undefined) {
 					// If an input for this name exists, use it
@@ -95,9 +95,9 @@ class InterpolationTool extends TemplateExprTool<StringInput> {
 	makeInput = this.makeStringInput;
 
 	async runImpl() {
-		this.out.val = this.expr.val.replace(TemplateExprTool.re, (match, name1, name2) => {
+		this.out.val = this.expr.val.replace(TemplateExprTool.re, (match, pre, name1, name2) => {
 			const name: string = name1 || name2;
-			return this.vars.get(name)!.input.val;
+			return pre + this.vars.get(name)!.input.val;
 		});
 	}
 }

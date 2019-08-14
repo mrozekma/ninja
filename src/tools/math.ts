@@ -10,9 +10,9 @@ class CalcTool extends TemplateExprTool<NumberInput> {
 	makeInput = this.makeNumberInput;
 
 	async runImpl() {
-		const expr = this.expr.val.replace(TemplateExprTool.re, (match, name1, name2) => {
+		const expr = this.expr.val.replace(TemplateExprTool.re, (match, pre, name1, name2) => {
 			const name = name1 || name2;
-			return '' + this.vars.get(name)!.input.val;
+			return pre + this.vars.get(name)!.input.val;
 		});
 		this.out.val = infix.evaluate(expr, infix.nativeNumberProvider);
 	}
