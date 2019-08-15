@@ -32,18 +32,42 @@ class TextSplitTool extends ToolInst {
 	}
 }
 
-class RegexMatchTool extends ToolInst {
-	private inp = this.makeStringInput('in', 'Input');
-	private regex = this.makeStringInput('pat', 'Regex pattern');
-	//TODO Flags?
+abstract class RegexTool extends ToolInst {
+	protected inp = this.makeStringInput('in', 'Input');
+	protected regex = this.makeStringInput('pat', 'Regex pattern');
+	protected flagGlobal = this.makeBooleanInput('g', 'Global');
+	protected flagIgnoreCase = this.makeBooleanInput('i', 'Ignore case');
+	protected flagMultiline = this.makeBooleanInput('m', 'Multi-line');
+	protected flagDotall = this.makeBooleanInput('s', 'Dot-all');
+
+	protected get re(): RegExp {
+		const flags =
+			(this.flagGlobal.val ? 'g' : '') +
+			(this.flagIgnoreCase.val ? 'i' : '') +
+			(this.flagMultiline.val ? 'm' : '') +
+			(this.flagDotall.val ? 's' : '');
+		return new RegExp(this.regex.val, flags);
+	}
+}
+
+class RegexMatchTool extends RegexTool {
 	private out = this.makeStringArrayOutput('out', 'Groups');
 
 	async runImpl() {
-		const match = this.inp.val.match(new RegExp(this.regex.val));
+		const match = this.inp.val.match(this.re);
 		if(match === null) {
 			throw new Error("Pattern does not match");
 		}
-		this.out.val = Array.from(match).slice(1);
+		this.out.val = this.flagGlobal.val ? [...match] : [...match].slice(1);
+	}
+}
+
+class RegexReplaceTool extends RegexTool {
+	private repl = this.makeStringInput('repl', 'Replacement');
+	private out = this.makeStringOutput('out', 'Output');
+
+	async runImpl() {
+		this.out.val = this.inp.val.replace(this.re, this.repl.val);
 	}
 }
 
@@ -133,6 +157,7 @@ export default [
 	makeDef(StringEncodeDecodeTool, 'Encode/Decode', 'String encode/decode'),
 	makeDef(TextSplitTool, 'Split', 'Split text'),
 	makeDef(RegexMatchTool, 'Regex', 'Regular expression match'),
+	makeDef(RegexReplaceTool, 'Replace', 'Regular expression replace'),
 	makeDef(InterpolationTool, 'Template', 'String template'),
 	makeDef(Base64Tool, 'Base64', 'Base64 encoder/decoder'),
 	makeDef(JSONDisplayTool, 'JSON display', 'JSON display', undefined, jsonViewer),
