@@ -1,6 +1,6 @@
 import { makeDef, ToolInst, Input, Output, ReversibleTool, ToolDef, StringInput } from '@/tools';
 
-import stringTemplate from 'string-template';
+import { diffChars, diffWords, diffLines, Change, convertChangesToXML } from 'diff';
 
 class StringEncodeDecodeTool extends ReversibleTool {
 	private inp: Input = this.makeStringInput('str', 'String');
@@ -126,6 +126,44 @@ class InterpolationTool extends TemplateExprTool<StringInput> {
 	}
 }
 
+export class DiffTool extends ToolInst {
+	private before = this.makeStringInput('in1', 'Input (before)');
+	private after = this.makeStringInput('in2', 'Input (after)');
+	//TODO JSON mode?
+	private mode = this.makeEnumInput('mode', 'Diff mode', 'chars', ['chars', 'words', 'lines']);
+	private ignoreCase = this.makeBooleanInput('i', 'Ignore case', false);
+	private ignoreSpace = this.makeBooleanInput('w', 'Ignore whitespace', false);
+	private out = this.makeStringOutput('out', 'Diff XML');
+	private _changes: Change[] = [];
+
+	get changes(): Readonly<Change[]> {
+		return this._changes;
+	}
+
+	get inputs() {
+		const rtn: Input[] = [ this.before, this.after, this.mode, this.ignoreCase ];
+		if(this.mode.val != 'chars') {
+			rtn.push(this.ignoreSpace);
+		}
+		return rtn;
+	}
+
+	private get diffFn(): ((before: string, after: string) => Change[]) {
+		const ignoreCase = this.ignoreCase.val;
+		const ignoreWhitespace = this.ignoreSpace.val;
+		switch(this.mode.val) {
+			case 'chars': return (before, after) => diffChars(before, after, { ignoreCase });
+			case 'words': return (before, after) => diffWords(before, after, { ignoreCase, ignoreWhitespace });
+			case 'lines': return (before, after) => diffLines(before, after, { ignoreCase, ignoreWhitespace });
+		}
+	}
+
+	async runImpl() {
+		this._changes = this.diffFn(this.before.val, this.after.val);
+		this.out.val = convertChangesToXML(this._changes);
+	}
+}
+
 class Base64Tool extends ReversibleTool {
 	private inp: Input = this.makeBytesInput('data', 'Data');
 	private dir = this.makeBooleanInput('dir', 'Direction', true, [ 'Encode', 'Decode' ]);
@@ -151,6 +189,7 @@ export class JSONDisplayTool extends ToolInst {
 	async runImpl() {}
 }
 
+import diffViewer from '@/tools/diff-viewer.vue';
 import jsonViewer from '@/tools/json-viewer.vue';
 
 export default [
@@ -159,6 +198,7 @@ export default [
 	makeDef(RegexMatchTool, 'Regex', 'Regular expression match'),
 	makeDef(RegexReplaceTool, 'Replace', 'Regular expression replace'),
 	makeDef(InterpolationTool, 'Template', 'String template'),
+	makeDef(DiffTool, 'Diff', 'String diff', undefined, diffViewer),
 	makeDef(Base64Tool, 'Base64', 'Base64 encoder/decoder'),
 	makeDef(JSONDisplayTool, 'JSON display', 'JSON display', undefined, jsonViewer),
 ];
